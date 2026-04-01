@@ -1,140 +1,64 @@
-# Example file showing a basic pg "game loop"
-# ref: https://www.pygame.org/docs/tut/ChimpLineByLine.html
+import os, math, random, sys
+import pygame
+from pygame.locals import *
 
-'''
-NEED TO DO
-- visual sprite update when low needs
-    - warning banner when low needs
-    - pseudo-death screen
-- set up journal to show light data
-- set up garden to show nutrient data
-
-System Integration
-- send button feedback to OPC server
-- recieve from OPC server
-( need to build RBpi)
-
-'''
-
-import os, math, random
-import pygame as pg
-
+# GLOBALS
 img_dir = os.path.join(os.path.dirname(__file__), "Resources", "images")
 WATER_MAX = 100
 NUTR_MAX = 100
 LIGHT_MAX = 100
 
+# check for raspbi OS
+if not sys.platform == 'win32':
+    from gpiozero import Button
+    os_type = 'raspbi'
+    _GPIO_A = Button(17)
+    _GPIO_B = Button(18)
+    _GPIO_C = Button(23)
+    KEYDOWN = pygame.KEYDOWN
+    A_BUTTON = pygame.K_r
+    B_BUTTON = pygame.K_x
+    C_BUTTON = pygame.K_b
+    _gpio_prev = {'a': False, 'b': False, 'c': False}
+# if windows:
+else:
+    os_type = 'win32'
+    KEYDOWN = pygame.KEYDOWN
+    A_BUTTON = pygame.K_a # navigate
+    B_BUTTON = pygame.K_b # select
+    C_BUTTON = pygame.K_c # back
+
+def poll_gpio():
+    """Inject synthetic pygame KEYDOWN events for GPIO button presses (rising edge only)."""
+    if os_type != 'raspbi':
+        return
+    for btn, key, label in [(_GPIO_A, A_BUTTON, 'a'), (_GPIO_B, B_BUTTON, 'b'), (_GPIO_C, C_BUTTON, 'c')]:
+        pressed = btn.is_pressed
+        if pressed and not _gpio_prev[label]:
+            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=key, mod=0, unicode=''))
+        _gpio_prev[label] = pressed
+
 def load_image(name, colorkey=None, scale=1):
     fullname = os.path.join(img_dir, name)
-    image = pg.image.load(fullname)
+    image = pygame.image.load(fullname)
 
     size = image.get_size()
     size = (size[0] * scale, size[1] * scale)
-    image = pg.transform.scale(image, size)
+    image = pygame.transform.scale(image, size)
 
-    if image.get_masks()[3]:  # has alpha channel
+    if image.get_masks()[3]:
         image = image.convert_alpha()
     else:
         image = image.convert()
         if colorkey is not None:
             if colorkey == -1:
                 colorkey = image.get_at((0, 0))
-            image.set_colorkey(colorkey, pg.RLEACCEL)
+            image.set_colorkey(colorkey, pygame.RLEACCEL)
 
     return image, image.get_rect()
 
-def load_sound(name):
-    class NoneSound:
-        def play(self):
-            pass
-
-    if not pg.mixer or not pg.mixer.get_init():
-        return NoneSound()
-
-    fullname = os.path.join(data_dir, name)
-    sound = pg.mixer.Sound(fullname)
-
-    return sound
-
-# pg setup
-pg.init()
-# screen = pg.display.set_mode((800, 480), pg.FULLSCREEN | pg.NOFRAME)
-screen = pg.display.set_mode((800, 480))
-
-SW = screen.get_width()
-SH = screen.get_height()
-
-# globals
-needs_font = None
-needs_icon = None
-status_icon = None
-indicator_icon = None
-scale = SW / 160
-
-# opc update
-OPC_UPDATE = pg.USEREVENT + 1 # checks for OPC update every 10 minutes
-pg.time.set_timer(OPC_UPDATE, 2000)  # 600,000 ms = 10 minutes
-
-# create the display
-display = pg.Surface(screen.get_size())
-display = display.convert()
-
-bg =  pg.image.load(os.path.join(img_dir, "bg.png"))
-bg = bg.convert()
-
-# os.path.join(img_dir, "bg.png"
-
-class Tama(pg.sprite.Sprite):
-    def __init__(self):
-        pg.sprite.Sprite.__init__(self)
-
-        self.image, self.rect = load_image("tama.png", None, .13*scale)
-        self.rect.midleft = (int(SW * 0.06), display.get_rect().centery-20)
-
-        self.thirst = 100
-        self.vitality = 100
-        self.mood = 100
-        self.age = 0
-
-        self.name = "Sprout"
-        self.plant_type = "Fern"
-
-    def opc_update(self, water, nutrients, light, age):
-        self.thirst = water / WATER_MAX * 100
-        self.vitality = nutrients / NUTR_MAX * 100
-        self.mood = light / LIGHT_MAX * 100
-        self.age = int(age)
-
-    def status_update(self):
-        # all 3 low
-        if self.thirst < 25 and self.vitality < 25 and self.mood < 25:
-            self.update_sprite("tama_wilt")
-        # minimum low
-        elif min(self.thirst, self.vitality, self.mood) < 50:
-            lowest = min(
-                (self.thirst, "thirst"),
-                (self.vitality, "vitality"),
-                (self.mood, "mood")
-            )[1]
-
-            if lowest == "thirst":
-                self.update_sprite("tama_wilt")
-            elif lowest == "vitality":
-                self.update_sprite("tama_wilt")
-            elif lowest == "mood":
-                self.update_sprite("tama_wilt")
-        # else, make happy
-        else:
-            self.update_sprite("tama")
-
-
-    def update_sprite(self, img):
-        self.image, self.rect = load_image(img+".png", None, .13 * scale)
-        self.rect.midleft = (int(SW * 0.06), display.get_rect().centery - 20)
-
-def get_font(size_ratio):
-    """Return a font sized relative to screen height."""
-    return pg.font.Font(None, max(8, int(SH * size_ratio)))
+def get_font(size_ratio, screen_height):
+    return pygame.font.Font(None, max(8, int(screen_height * size_ratio)))
 
 def get_status(tama):
     lowest = min(tama.thirst, tama.vitality, tama.mood)
@@ -145,107 +69,110 @@ def get_status(tama):
     else:
         return "Doing well"
 
-def draw_needs(surface, tama):
-    global needs_font, needs_icon
+class Tama(pygame.sprite.Sprite):
+    def __init__(self, sw, sh):
+        pygame.sprite.Sprite.__init__(self)
 
-    font_size_ratio = 0.125         # ~30px at 240h
-    bar_width  = int(SW * 0.31)     # ~100px at 320w
-    bar_height = int(SH * 0.083)    # ~20px at 240h
-    padding    = int(SH * 0.125)    # ~30px at 240h
-    margin_x   = int(SW * 0.0625)   # ~20px at 320w
-    start_y    = int(SH * 0.229)    # ~55px at 240h
-    icon_dim   = int(SH * 0.067)    # small icon square
+        self.sw = sw
+        self.sh = sh
+        self.scale = sw / 160
 
-    if needs_font is None:
-        needs_font = get_font(font_size_ratio)
-    if needs_icon is None:
-        needs_icon, _ = load_image("sprite.png", None, 1)
-        needs_icon = pg.transform.scale(needs_icon, (icon_dim, icon_dim))
+        self.rect = pygame.Rect(0, 0, 0, 0)
+        self.rect.midleft = (int(sw * 0.06), sh // 2 - 20)
 
-    x = surface.get_width() - bar_width - margin_x
+        # stats
+        self.thirst = 100
+        self.vitality = 100
+        self.mood = 100
+        self.age = 0
 
-    needs = [
-        ("Thirst",   tama.thirst,   (100, 200, 100)),
-        ("Vitality", tama.vitality, (100, 150, 255)),
-        ("Mood",     tama.mood,     (255, 200,  80)),
-    ]
+        self.name = "Sprout"
+        self.plant_type = "Fern"
 
-    for i, (label, value, color) in enumerate(needs):
-        y = start_y + i * (bar_height + padding)
+        # --- state system ---
+        self.state = "normal"          # normal / wilt
+        self.flash_state = None        # e.g. "tama_joy"
+        self.flash_until = 0
 
-        pg.draw.rect(surface, (60, 60, 60), (x, y, bar_width, bar_height))
-        pg.draw.rect(surface, color, (x, y, int(bar_width * value / 100), bar_height))
+        self.current_sprite = None
+        self._apply_sprite("tama")
 
-        text = needs_font.render(label, True, (0, 0, 0))
-        label_y = y + bar_height + 2
-        surface.blit(needs_icon, (x, label_y))
-        remaining_x = x + icon_dim + int(SW * 0.0125)
-        remaining_width = bar_width - icon_dim - int(SW * 0.0125)
-        text_x = remaining_x + (remaining_width - text.get_width()) // 2
-        surface.blit(text, (text_x, label_y))
+    # ---------------------------
+    # DATA UPDATE (unchanged)
+    # ---------------------------
+    def opc_update(self, water, nutrients, light, age):
+        self.thirst = max(0, water / WATER_MAX * 100)
+        self.vitality = max(0, nutrients / NUTR_MAX * 100)
+        self.mood = max(0, light / LIGHT_MAX * 100)
+        self.age = int(age)
 
-def draw_above(surface, tama):
-    global status_icon, needs_font
+    # ---------------------------
+    # STATE ONLY (no rendering)
+    # ---------------------------
+    def status_update(self):
+        if self.thirst < 25 and self.vitality < 25 and self.mood < 25:
+            self.state = "wilt"
+        elif min(self.thirst, self.vitality, self.mood) < 50:
+            self.state = "wilt"
+        else:
+            self.state = "normal"
 
-    font_size_ratio = 0.125
-    icon_dim  = int(SH * 0.067)
-    margin_x  = int(SW * 0.0625)
-    margin_y  = int(SH * 0.042)
+    def flash_sprite(self, img):
+        self.flash_state = img
+        self.flash_until = pygame.time.get_ticks() + 2000
 
-    if status_icon is None:
-        status_icon, _ = load_image("sprite.png", None, 1)
-        status_icon = pg.transform.scale(status_icon, (icon_dim, icon_dim))
-    if needs_font is None:
-        needs_font = get_font(font_size_ratio)
+    # ---------------------------
+    # CENTRAL RESOLUTION
+    # ---------------------------
+    def resolve_sprite(self):
+        now = pygame.time.get_ticks()
 
-    day_text = needs_font.render(f"Day {tama.age}", True, (0, 0, 0))
-    surface.blit(day_text, (margin_x, margin_y))
+        # Priority 1: flash
+        if self.flash_state:
+            if now < self.flash_until:
+                return self.flash_state
+            else:
+                self.flash_state = None
 
-    status_text = needs_font.render(get_status(tama), True, (0, 0, 0))
-    status_x = surface.get_width() - status_text.get_width() - margin_x
-    surface.blit(status_text, (status_x, margin_y))
+        # Priority 2: status
+        if self.state == "wilt":
+            return "tama_wilt"
 
-def draw_below(surface, tama):
-    global indicator_icon, needs_font
+        return "tama"
 
-    font_size_ratio = 0.125
-    icon_dim = int(SW * 0.0625)   # ~20px at 320w
-    gap      = int(SW * 0.0625)   # ~20px at 320w
-    margin_b = int(SH * 0.042)    # ~10px at 240h
+    # ---------------------------
+    # APPLY SPRITE (only place that mutates image)
+    # ---------------------------
+    def _apply_sprite(self, name):
+        self.image, self.rect = load_image(name + ".png", None, .13 * self.scale)
+        self.rect.midleft = (int(self.sw * 0.06), self.sh // 2 - 20)
+        self.current_sprite = name
 
-    if indicator_icon is None:
-        indicator_icon, _ = load_image("sprite.png", None, 1)
-        indicator_icon = pg.transform.scale(indicator_icon, (icon_dim, icon_dim))
-    if needs_font is None:
-        needs_font = get_font(font_size_ratio)
+    # ---------------------------
+    # FRAME UPDATE
+    # ---------------------------
+    def update(self):
+        sprite_name = self.resolve_sprite()
 
-    items = [tama.name, tama.plant_type]
-    rendered = [needs_font.render(label, True, (0, 0, 0)) for label in items]
-    item_widths = [icon_dim + int(SW * 0.0125) + t.get_width() for t in rendered]
-    total_width = sum(item_widths) + gap
-
-    y = surface.get_height() - icon_dim - margin_b
-    start_x = (surface.get_width() - total_width) // 2
-
-    for i, (text, item_width) in enumerate(zip(rendered, item_widths)):
-        x = start_x + sum(item_widths[:i]) + i * gap
-        surface.blit(indicator_icon, (x, y))
-        surface.blit(text, (x + icon_dim + int(SW * 0.0125), y))
+        if sprite_name != self.current_sprite:
+            self._apply_sprite(sprite_name)
 
 class MenuScreen:
-    def __init__(self, surface_width, surface_height):
-        self.width = surface_width
-        self.height = surface_height
-        self.x = -surface_width
-        self.target_x = -surface_width
+    def __init__(self, sw, sh):
+        self.sw = sw
+        self.sh = sh
+        self.width = sw
+        self.height = sh
+        self.x = -sw
+        self.target_x = -sw
         self.open = False
-        self.speed = int(surface_width * 0.0625)  # ~20px at 320w
+        self.speed = int(sw * 0.0625)
         self.icon = None
         self.font = None
         self.selected = 0
 
-        panel_width = surface_width - int(surface_width * 0.453)  # leaves ~145px gap at 320w
-        self.surface = pg.Surface((panel_width, surface_height), pg.SRCALPHA)
+        panel_width = sw - int(sw * 0.453)
+        self.surface = pygame.Surface((panel_width, sh), pygame.SRCALPHA)
         self._panel_width = panel_width
 
     def toggle(self):
@@ -256,11 +183,11 @@ class MenuScreen:
         if not self.open:
             return None
         items_count = 3
-        if key in (pg.K_u, pg.K_l):
-            self.selected = (self.selected - 1) % items_count
-        elif key in (pg.K_d, pg.K_r):
+        if key == A_BUTTON:
+            self.hide()
+        elif key == B_BUTTON:
             self.selected = (self.selected + 1) % items_count
-        elif key == pg.K_y:
+        elif key == C_BUTTON:
             return self.selected
         return None
 
@@ -272,21 +199,21 @@ class MenuScreen:
 
     def draw(self, screen):
         if self.font is None:
-            self.font = get_font(0.125)
+            self.font = get_font(0.125, self.sh)
         if self.icon is None:
             icon_dim = int(self.font.size("A")[1] * 2)
             self.icon, _ = load_image("sprite.png", None, 1)
-            self.icon = pg.transform.scale(self.icon, (icon_dim, icon_dim))
+            self.icon = pygame.transform.scale(self.icon, (icon_dim, icon_dim))
 
         if self.x >= -self.width:
             self.surface.fill((50, 50, 50, 255))
 
             items = ["Water", "Garden", "Journal"]
-            icon_size   = self.icon.get_width()
+            icon_size = self.icon.get_width()
             text_height = self.font.size("A")[1]
             item_height = max(icon_size, text_height)
-            item_gap    = int(SH * 0.067)   # ~16px at 240h
-            padding_left = int(self._panel_width * 0.125)  # proportional left pad
+            item_gap = int(self.sh * 0.067)
+            padding_left = int(self._panel_width * 0.125)
 
             total_height = len(items) * item_height + (len(items) - 1) * item_gap
             start_y = (self.surface.get_height() - total_height) // 2
@@ -300,27 +227,28 @@ class MenuScreen:
                     self.surface.blit(self.icon, (padding_left, icon_y))
                 else:
                     dimmed = self.icon.copy()
-                    dimmed.fill((150, 150, 150, 255), special_flags=pg.BLEND_RGBA_MULT)
+                    dimmed.fill((150, 150, 150, 255), special_flags=pygame.BLEND_RGBA_MULT)
                     self.surface.blit(dimmed, (padding_left, icon_y))
 
                 color = (255, 255, 255) if is_selected else (100, 100, 100)
                 text = self.font.render(item, True, color)
                 text_y = y + (item_height - text_height) // 2
-                self.surface.blit(text, (padding_left + icon_size + int(SW * 0.03), text_y))
+                self.surface.blit(text, (padding_left + icon_size + int(self.sw * 0.03), text_y))
 
             screen.blit(self.surface, (self.x, 0))
 
 class CareScreen:
-    def __init__(self, surface_width, surface_height):
-        self.width = surface_width
-        self.height = surface_height
-        self.x = surface_width
-        self.target_x = surface_width
+    def __init__(self, sw, sh):
+        self.sw = sw
+        self.sh = sh
+        self.width = sw
+        self.height = sh
+        self.x = sw
+        self.target_x = sw
         self.open = False
-        self.speed = int(surface_width * 0.0625)  # ~20px at 320w
+        self.speed = int(sw * 0.0625)
         self.font = None
-
-        self.surface = pg.Surface((surface_width, surface_height))
+        self.surface = pygame.Surface((sw, sh))
 
     def show(self):
         self.open = True
@@ -331,7 +259,7 @@ class CareScreen:
         self.target_x = self.width
 
     def handle_key(self, key, tama):
-        if key == pg.K_x:
+        if key == C_BUTTON:
             self.hide()
 
     def update(self):
@@ -341,51 +269,50 @@ class CareScreen:
             self.x = max(self.x - self.speed, self.target_x)
 
     def draw_content(self, surface, tama):
-        pass  # overridden by subclasses
+        pass
 
     def draw(self, screen, tama):
         if self.font is None:
-            self.font = get_font(0.125)
-
+            self.font = get_font(0.125, self.sh)
         if self.x < self.width:
             self.surface.fill((30, 30, 30))
             self.draw_content(self.surface, tama)
             screen.blit(self.surface, (self.x, 0))
 
 class WaterScreen(CareScreen):
-    def __init__(self, surface_width, surface_height):
-        super().__init__(surface_width, surface_height)
+    def __init__(self, sw, sh):
+        super().__init__(sw, sh)
 
     def draw_content(self, surface, tama):
         w, h = surface.get_size()
-        bar_w = int(w * 0.625)   # ~200px at 320w
-        bar_h = int(h * 0.083)   # ~20px at 240h
+        bar_w = int(w * 0.625)
+        bar_h = int(h * 0.083)
         margin_x = int(w * 0.0625)
         margin_y = int(h * 0.083)
-        hint_pad = int(h * 0.167)  # ~40px at 240h
+        hint_pad = int(h * 0.167)
 
         title = self.font.render("Water", True, (100, 200, 255))
         surface.blit(title, (margin_x, margin_y))
 
         x = (w - bar_w) // 2
         y = h // 2 - bar_h // 2
-        pg.draw.rect(surface, (60, 60, 60), (x, y, bar_w, bar_h))
-        pg.draw.rect(surface, (100, 200, 255), (x, y, int(bar_w * tama.thirst / 100), bar_h))
+        pygame.draw.rect(surface, (60, 60, 60), (x, y, bar_w, bar_h))
+        pygame.draw.rect(surface, (100, 200, 255), (x, y, int(bar_w * tama.thirst / 100), bar_h))
 
         label = self.font.render(f"Water level: {int(tama.thirst)}%", True, (255, 255, 255))
         surface.blit(label, (x, y - int(h * 0.125)))
 
-        hint = self.font.render("Press Y to water", True, (150, 150, 150))
+        hint = self.font.render("Press C to water", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
     def handle_key(self, key, tama):
         super().handle_key(key, tama)
-        if key == pg.K_y:
+        if key == C_BUTTON:
             tama.thirst = min(100, tama.thirst + 20)
 
 class GardenScreen(CareScreen):
-    def __init__(self, surface_width, surface_height):
-        super().__init__(surface_width, surface_height)
+    def __init__(self, sw, sh):
+        super().__init__(sw, sh)
 
     def draw_content(self, surface, tama):
         w, h = surface.get_size()
@@ -400,8 +327,8 @@ class GardenScreen(CareScreen):
 
         x = (w - bar_w) // 2
         y = h // 2 - bar_h // 2
-        pg.draw.rect(surface, (60, 60, 60), (x, y, bar_w, bar_h))
-        pg.draw.rect(surface, (100, 255, 150), (x, y, int(bar_w * tama.vitality / 100), bar_h))
+        pygame.draw.rect(surface, (60, 60, 60), (x, y, bar_w, bar_h))
+        pygame.draw.rect(surface, (100, 255, 150), (x, y, int(bar_w * tama.vitality / 100), bar_h))
 
         label = self.font.render(f"Nutrients: {int(tama.vitality)}%", True, (255, 255, 255))
         surface.blit(label, (x, y - int(h * 0.125)))
@@ -411,20 +338,20 @@ class GardenScreen(CareScreen):
 
     def handle_key(self, key, tama):
         super().handle_key(key, tama)
-        if key == pg.K_y:
+        if key == C_BUTTON:
             tama.vitality = min(100, tama.vitality + 20)
 
 class JournalScreen(CareScreen):
-    def __init__(self, surface_width, surface_height):
-        super().__init__(surface_width, surface_height)
+    def __init__(self, sw, sh):
+        super().__init__(sw, sh)
         self.entries = []
 
     def draw_content(self, surface, tama):
         w, h = surface.get_size()
         margin_x = int(w * 0.0625)
         margin_y = int(h * 0.083)
-        entry_gap = int(h * 0.146)   # ~35px at 240h
-        hint_pad  = int(h * 0.167)
+        entry_gap = int(h * 0.146)
+        hint_pad = int(h * 0.167)
 
         title = self.font.render("Journal", True, (255, 200, 80))
         surface.blit(title, (margin_x, margin_y))
@@ -442,67 +369,193 @@ class JournalScreen(CareScreen):
 
     def handle_key(self, key, tama):
         super().handle_key(key, tama)
-        if key == pg.K_y:
+        if key == C_BUTTON:
             from datetime import date
             self.entries.append(f"Day log: W{int(tama.thirst)} V{int(tama.vitality)} M{int(tama.mood)}")
 
-# prepare game objects
-tama = Tama()
-allsprites = pg.sprite.RenderPlain(tama)
+class App:
+    def __init__(self):
+        self._running = True
+        self.screen = None
+        self.size = self.width, self.height = 800, 480
+        self.bg = None
+        self.bg_rect = None
+        self.tama = None
+        self.allsprites = None
+        self.menu = None
+        self.care_screens = None
+        self.active_care = None
 
-clock = pg.time.Clock()
+    def on_init(self):
+        pygame.init()
+        # SCREEN INIT
+        if os_type == "raspbi":
+            self.screen = pygame.display.set_mode(self.size, pygame.FULLSCREEN)
+        else:
+            self.screen = pygame.display.set_mode(self.size)
 
-menu = MenuScreen(SW, SH)
+        self._running = True
+        self.clock = pygame.time.Clock()
 
-care_screens = [
-    WaterScreen(SW, SH),
-    GardenScreen(SW, SH),
-    JournalScreen(SW, SH),
-]
+        # Background
+        self.bg = pygame.image.load(os.path.join(img_dir, "bg.png")).convert()
+        bg_w, bg_h = self.bg.get_size()
+        scale = 1.7 * min(self.width / bg_w, self.height / bg_h)
+        self.bg = pygame.transform.scale(self.bg, (int(bg_w * scale), int(bg_h * scale)))
+        self.bg_rect = self.bg.get_rect(center=(self.width // 2, self.height // 2 - 50))
 
-active_care = None
+        # OPC timer
+        self.OPC_UPDATE = pygame.USEREVENT + 1
+        pygame.time.set_timer(self.OPC_UPDATE, 5000)
 
-# main loop
-running = True
-while running:
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-        if event.type == pg.KEYDOWN:
-            if active_care and active_care.open:
-                active_care.handle_key(event.key, tama)
-                if not active_care.open:
-                    active_care = None
-            elif event.key == pg.K_x:
-                menu.toggle()
+        # Game objects
+        self.tama = Tama(self.width, self.height)
+        self.allsprites = pygame.sprite.RenderPlain(self.tama)
+
+        self.menu = MenuScreen(self.width, self.height)
+        self.care_screens = [
+            WaterScreen(self.width, self.height),
+            GardenScreen(self.width, self.height),
+            JournalScreen(self.width, self.height),
+        ]
+
+    def on_event(self, event):
+        if event.type == pygame.QUIT:
+            self._running = False
+
+        if event.type == KEYDOWN:
+            if self.active_care and self.active_care.open:
+                self.active_care.handle_key(event.key, self.tama)
+                if not self.active_care.open:
+                    self.active_care = None
+                self.tama.flash_sprite("tama_joy")
+            elif event.key == A_BUTTON:
+                self.menu.toggle()
+            # QUIT
+            elif event.key == pygame.K_ESCAPE:
+                self.on_cleanup()
+                sys.exit()
             else:
-                selected = menu.handle_key(event.key)
+                selected = self.menu.handle_key(event.key)
                 if selected is not None:
-                    active_care = care_screens[selected]
-                    active_care.show()
-                    menu.toggle()
-        if event.type == OPC_UPDATE:
-            tama.opc_update(tama.thirst - random.randint(0,25), tama.vitality - random.randint(0,25), tama.mood - random.randint(0,25), tama.age + 1)
-            tama.status_update()
+                    self.active_care = self.care_screens[selected]
+                    self.active_care.show()
+                    self.menu.toggle()
 
-    allsprites.update()
-    menu.update()
-    if active_care:
-        active_care.update()
+        if event.type == self.OPC_UPDATE:
+            self.tama.opc_update(
+                self.tama.thirst - random.randint(0, 25),
+                self.tama.vitality - random.randint(0, 25),
+                self.tama.mood - random.randint(0, 25),
+                self.tama.age + 1
+            )
 
-    screen.fill([255, 255, 255])
-    screen.blit(bg, (0, 0))
+            self.tama.status_update()
 
-    allsprites.draw(screen)
-    draw_above(screen, tama)
-    draw_needs(screen, tama)
-    draw_below(screen, tama)
-    menu.draw(screen)
-    if active_care:
-        active_care.draw(screen, tama)
+    def on_loop(self):
+        poll_gpio()
+        self.allsprites.update()
+        self.menu.update()
+        if self.active_care:
+            self.active_care.update()
 
-    pg.display.flip()
+    def on_render(self):
+        self.screen.fill((255, 255, 255))
+        self.screen.blit(self.bg, self.bg_rect)
 
-    clock.tick(60)
+        self.allsprites.draw(self.screen)
+        self._draw_above()
+        self._draw_needs()
+        self._draw_below()
+        self.menu.draw(self.screen)
+        if self.active_care:
+            self.active_care.draw(self.screen, self.tama)
 
-pg.quit()
+        pygame.display.flip()
+
+    def _draw_needs(self):
+        font = get_font(0.125, self.height)
+        bar_width  = int(self.width * 0.31)
+        bar_height = int(self.height * 0.083)
+        padding    = int(self.height * 0.125)
+        margin_x   = int(self.width * 0.0625)
+        start_y    = int(self.height * 0.229)
+        icon_dim   = int(self.height * 0.067)
+
+        icon, _ = load_image("sprite.png", None, 1)
+        icon = pygame.transform.scale(icon, (icon_dim, icon_dim))
+
+        x = self.screen.get_width() - bar_width - margin_x
+
+        needs = [
+            ("Thirst",   self.tama.thirst,   (100, 200, 100)),
+            ("Vitality", self.tama.vitality, (100, 150, 255)),
+            ("Mood",     self.tama.mood,     (255, 200,  80)),
+        ]
+
+        for i, (label, value, color) in enumerate(needs):
+            y = start_y + i * (bar_height + padding)
+            pygame.draw.rect(self.screen, (60, 60, 60), (x, y, bar_width, bar_height))
+            pygame.draw.rect(self.screen, color, (x, y, int(bar_width * value / 100), bar_height))
+
+            text = font.render(label, True, (0, 0, 0))
+            label_y = y + bar_height + 2
+            self.screen.blit(icon, (x, label_y))
+            remaining_x = x + icon_dim + int(self.width * 0.0125)
+            remaining_width = bar_width - icon_dim - int(self.width * 0.0125)
+            text_x = remaining_x + (remaining_width - text.get_width()) // 2
+            self.screen.blit(text, (text_x, label_y))
+
+    def _draw_above(self):
+        font = get_font(0.125, self.height)
+        margin_x = int(self.width * 0.0625)
+        margin_y = int(self.height * 0.042)
+
+        day_text = font.render(f"Day {self.tama.age}", True, (0, 0, 0))
+        self.screen.blit(day_text, (margin_x, margin_y))
+
+        status_text = font.render(get_status(self.tama), True, (0, 0, 0))
+        status_x = self.screen.get_width() - status_text.get_width() - margin_x
+        self.screen.blit(status_text, (status_x, margin_y))
+
+    def _draw_below(self):
+        font = get_font(0.125, self.height)
+        icon_dim = int(self.width * 0.0625)
+        gap      = int(self.width * 0.0625)
+        margin_b = int(self.height * 0.042)
+
+        icon, _ = load_image("sprite.png", None, 1)
+        icon = pygame.transform.scale(icon, (icon_dim, icon_dim))
+
+        items = [self.tama.name, self.tama.plant_type]
+        rendered = [font.render(label, True, (0, 0, 0)) for label in items]
+        item_widths = [icon_dim + int(self.width * 0.0125) + t.get_width() for t in rendered]
+        total_width = sum(item_widths) + gap
+
+        y = self.screen.get_height() - icon_dim - margin_b
+        start_x = (self.screen.get_width() - total_width) // 2
+
+        for i, (text, item_width) in enumerate(zip(rendered, item_widths)):
+            x = start_x + sum(item_widths[:i]) + i * gap
+            self.screen.blit(icon, (x, y))
+            self.screen.blit(text, (x + icon_dim + int(self.width * 0.0125), y))
+
+    def on_cleanup(self):
+        pygame.quit()
+
+    def on_execute(self):
+        if self.on_init() == False:
+            self._running = False
+
+        while self._running:
+            for event in pygame.event.get():
+                self.on_event(event)
+            self.on_loop()
+            self.on_render()
+            self.clock.tick(60)
+
+        self.on_cleanup()
+
+if __name__ == "__main__":
+    theApp = App()
+    theApp.on_execute()

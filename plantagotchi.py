@@ -77,9 +77,10 @@ class Tama(pygame.sprite.Sprite):
         self.sh = sh
         self.scale = sw / 160
 
-        self.image, self.rect = load_image("tama.png", None, .13 * self.scale)
+        self.rect = pygame.Rect(0, 0, 0, 0)
         self.rect.midleft = (int(sw * 0.06), sh // 2 - 20)
 
+        # stats
         self.thirst = 100
         self.vitality = 100
         self.mood = 100
@@ -88,23 +89,73 @@ class Tama(pygame.sprite.Sprite):
         self.name = "Sprout"
         self.plant_type = "Fern"
 
+        # --- state system ---
+        self.state = "normal"          # normal / wilt
+        self.flash_state = None        # e.g. "tama_joy"
+        self.flash_until = 0
+
+        self.current_sprite = None
+        self._apply_sprite("tama")
+
+    # ---------------------------
+    # OPCUA DATA
+    # ---------------------------
     def opc_update(self, water, nutrients, light, age):
         self.thirst = max(0, water / WATER_MAX * 100)
         self.vitality = max(0, nutrients / NUTR_MAX * 100)
         self.mood = max(0, light / LIGHT_MAX * 100)
         self.age = int(age)
 
+    # ---------------------------
+    #  CHANGE STATE
+    # ---------------------------
     def status_update(self):
         if self.thirst < 25 and self.vitality < 25 and self.mood < 25:
-            self.update_sprite("tama_wilt")
+            self.state = "wilt"
         elif min(self.thirst, self.vitality, self.mood) < 50:
-            self.update_sprite("tama_wilt")
+            self.state = "wilt"
         else:
-            self.update_sprite("tama")
+            self.state = "normal"
 
-    def update_sprite(self, img):
-        self.image, self.rect = load_image(img + ".png", None, .13 * self.scale)
+    def flash_sprite(self, img):
+        self.flash_state = img
+        self.flash_until = pygame.time.get_ticks() + 1000
+
+    # ---------------------------
+    # CENTRAL RESOLUTION
+    # ---------------------------
+    def resolve_sprite(self):
+        now = pygame.time.get_ticks()
+
+        # FLASH 1ST
+        if self.flash_state:
+            if now < self.flash_until:
+                return self.flash_state
+            else:
+                self.flash_state = None
+
+        # STATUS 2ND
+        if self.state == "wilt":
+            return "tama_wilt"
+
+        return "tama"
+
+    # ---------------------------
+    # APPLY SPRITE IMG
+    # ---------------------------
+    def _apply_sprite(self, name):
+        self.image, self.rect = load_image(name + ".png", None, .13 * self.scale)
         self.rect.midleft = (int(self.sw * 0.06), self.sh // 2 - 20)
+        self.current_sprite = name
+
+    # ---------------------------
+    # FRAME UPDATE
+    # ---------------------------
+    def update(self):
+        sprite_name = self.resolve_sprite()
+
+        if sprite_name != self.current_sprite:
+            self._apply_sprite(sprite_name)
 
 class MenuScreen:
     def __init__(self, sw, sh):
@@ -251,7 +302,7 @@ class WaterScreen(CareScreen):
         label = self.font.render(f"Water level: {int(tama.thirst)}%", True, (255, 255, 255))
         surface.blit(label, (x, y - int(h * 0.125)))
 
-        hint = self.font.render("Press Y to water", True, (150, 150, 150))
+        hint = self.font.render("Press C to water", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
     def handle_key(self, key, tama):
@@ -355,7 +406,7 @@ class App:
 
         # OPC timer
         self.OPC_UPDATE = pygame.USEREVENT + 1
-        pygame.time.set_timer(self.OPC_UPDATE, 2000)
+        pygame.time.set_timer(self.OPC_UPDATE, 5000)
 
         # Game objects
         self.tama = Tama(self.width, self.height)
@@ -377,6 +428,7 @@ class App:
                 self.active_care.handle_key(event.key, self.tama)
                 if not self.active_care.open:
                     self.active_care = None
+                self.tama.flash_sprite("tama_joy")
             elif event.key == A_BUTTON:
                 self.menu.toggle()
             # QUIT
