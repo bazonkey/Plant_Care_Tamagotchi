@@ -458,8 +458,6 @@ class App:
                 self.tama.status_update()
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
-        finally:
-            loop.close()
 
     def on_init(self):
         pygame.init()
