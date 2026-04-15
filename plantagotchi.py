@@ -422,9 +422,29 @@ class App:
                 uri = "http://myopcua.server"
                 idx = await client.get_namespace_index(uri)
 
+                # deliverables
                 water = await client.get_node(f"ns={idx};s=Water").read_value()
+                food = await client.get_node(f"ns={idx};s=Food").read_value()
+                light = await client.get_node(f"ns={idx};s=Light").read_value()
+
+                # values
+                light_intensity = await client.get_node(f"ns={idx};s=LightIntensity").read_value()
+                moisture = await client.get_node(f"ns={idx};s=Moisture").read_value()
+                nitrogen = await client.get_node(f"ns={idx};s=Nitrogen").read_value()
+                phosphorus = await client.get_node(f"ns={idx};s=Phosphorus").read_value()
+                potassium = await client.get_node(f"ns={idx};s=Potassium").read_value()
+
+
                 print("water:", water)
-                return water
+                print("food:", food)
+                print("light:", light)
+                print("light_intensity:", light_intensity)
+                print("moisture:", moisture)
+                print("nitrogen:", nitrogen)
+                print("phosphorus:", phosphorus)
+                print("potassium:", potassium)
+
+                return (water, food, light, light_intensity, moisture, nitrogen, phosphorus, potassium)
             except Exception as e:
                 print("OPC read error:", type(e).__name__, e)
                 return None
