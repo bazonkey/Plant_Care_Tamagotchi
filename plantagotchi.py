@@ -1,6 +1,23 @@
-import os, math, random, sys
+import os, random, sys
 import pygame
 from pygame.locals import *
+
+# ----------------  OPCUA SERVER STUFF ----------------------------
+
+import asyncio
+from asyncua import Client, ua
+from asyncua.crypto.security_policies import SecurityPolicyBasic256Sha256
+import threading
+
+# SERVER_URL = "opc.tcp://100.90.187.71:4840/myopcua/server"
+SERVER_URL = "opc.tcp://100.100.12.80:4840/myopcua/server"
+
+CLIENT_CERT = "pki/own/certs/client_cert.der"
+CLIENT_KEY = "pki/own/private/client_key.pem"
+# SERVER_CERT = "pki/trusted/certs/server_cert.der"
+
+
+# ----------------  END --------------- ----------------------------
 
 # GLOBALS
 img_dir = os.path.join(os.path.dirname(__file__), "Resources", "images")
@@ -391,6 +408,41 @@ class App:
         self.care_screens = None
         self.active_care = None
 
+    def _fetch_opc(self):
+        async def _read():
+            client = Client("opc.tcp://100.100.12.80:4840/myopcua/server")
+            client.application_uri = "urn:trevor:opcua:client"
+            await client.set_security(
+                SecurityPolicyBasic256Sha256,
+                certificate="pki/own/certs/client_cert.der",
+                private_key="pki/own/private/client_key.pem",
+            )
+            try:
+                await client.connect()
+                uri = "http://myopcua.server"
+                idx = await client.get_namespace_index(uri)
+
+                water = await client.get_node(f"ns={idx};s=Water").read_value()
+                print("water:", water)
+                return water
+            except Exception as e:
+                print("OPC read error:", type(e).__name__, e)
+                return None
+            finally:
+                await client.disconnect()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            water = asyncio.run(_read())
+            if water is not None:
+                self.tama.opc_update(water, self.tama.vitality, self.tama.mood, self.tama.age)
+                self.tama.status_update()
+        except Exception as e:
+            print("OPC fetch failed:", type(e).__name__, e)
+        finally:
+            loop.close()
+
     def on_init(self):
         pygame.init()
         # SCREEN INIT
@@ -411,7 +463,7 @@ class App:
 
         # OPC timer
         self.OPC_UPDATE = pygame.USEREVENT + 1
-        pygame.time.set_timer(self.OPC_UPDATE, 5000)
+        pygame.time.set_timer(self.OPC_UPDATE, 1000)
 
         # Game objects
         self.tama = Tama(self.width, self.height)
@@ -448,12 +500,7 @@ class App:
                     self.menu.toggle()
 
         if event.type == self.OPC_UPDATE:
-            self.tama.opc_update(
-                self.tama.thirst - random.randint(0, 25),
-                self.tama.vitality - random.randint(0, 25),
-                self.tama.mood - random.randint(0, 25),
-                self.tama.age + 1
-            )
+            threading.Thread(target=self._fetch_opc, daemon=True).start()
 
             self.tama.status_update()
 
