@@ -451,8 +451,6 @@ class App:
             finally:
                 await client.disconnect()
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
             water = asyncio.run(_read())
             if water is not None:
