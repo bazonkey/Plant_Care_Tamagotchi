@@ -9,8 +9,8 @@ from asyncua import Client, ua
 from asyncua.crypto.security_policies import SecurityPolicyBasic256Sha256
 import threading
 
-# SERVER_URL = "opc.tcp://100.90.187.71:4840/myopcua/server"
-SERVER_URL = "opc.tcp://100.100.12.80:4840/myopcua/server"
+SERVER_URL = "opc.tcp://100.90.187.71:4840/myopcua/server"
+# SERVER_URL = "opc.tcp://100.100.12.80:4840/myopcua/server"
 
 CLIENT_CERT = "pki/own/certs/client_cert.der"
 CLIENT_KEY = "pki/own/private/client_key.pem"
@@ -410,7 +410,7 @@ class App:
 
     def _fetch_opc(self):
         async def _read():
-            client = Client("opc.tcp://100.100.12.80:4840/myopcua/server", timeout=30)
+            client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
             await client.set_security(
                 SecurityPolicyBasic256Sha256,
