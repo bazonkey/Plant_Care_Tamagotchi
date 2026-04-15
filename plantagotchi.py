@@ -451,6 +451,8 @@ class App:
             finally:
                 await client.disconnect()
 
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             water = asyncio.run(_read())
             if water is not None:
@@ -458,6 +460,8 @@ class App:
                 self.tama.status_update()
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
+        finally:
+            loop.close()
 
     def on_init(self):
         pygame.init()
