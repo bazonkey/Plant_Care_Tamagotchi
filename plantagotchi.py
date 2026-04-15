@@ -21,6 +21,7 @@ if not sys.platform == 'win32':
     btn_b = Button(18)
     btn_c = Button(23)
 
+    # queue keypress when GPIO buttons are pressed
     def press_a():
         pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a))
 
