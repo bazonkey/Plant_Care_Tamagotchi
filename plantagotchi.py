@@ -330,7 +330,7 @@ class WaterScreen(CareScreen):
     def handle_key(self, key, tama):
         super().handle_key(key, tama)
         if key == C_BUTTON:
-            tama.thirst = min(100, tama.thirst + 20)
+            asyncio.run(_write())
 
 class GardenScreen(CareScreen):
     def __init__(self, sw, sh):
@@ -408,7 +408,7 @@ class App:
         self.care_screens = None
         self.active_care = None
 
-    def _fetch_opc(self):
+    def _fetch_opc(self, type, flag):
         async def _read():
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
@@ -421,7 +421,7 @@ class App:
                 await client.connect()
                 uri = "http://myopcua.server"
                 idx = await client.get_namespace_index(uri)
-
+                # change to write and pass variant .write_value(ua.Variant(value, ua.VariantType.[variant type: bool, float, etc]))
                 # deliverables
                 water = await client.get_node(f"ns={idx};s=Water").read_value()
                 food = await client.get_node(f"ns={idx};s=Food").read_value()
@@ -450,14 +450,49 @@ class App:
                 return None
             finally:
                 await client.disconnect()
+        async def _write(type):
+            client = Client(SERVER_URL)
+            client.application_uri = "urn:trevor:opcua:client"
+            await client.set_security(
+                SecurityPolicyBasic256Sha256,
+                certificate="pki/own/certs/client_cert.der",
+                private_key="pki/own/private/client_key.pem",
+            )
+            try:
+                await client.connect()
+                uri = "http://myopcua.server"
+                idx = await client.get_namespace_index(uri)
+                # change to write and pass variant .write_value(ua.Variant(value, ua.VariantType.[variant type: bool, float, etc]))
+                # deliverables
+                if type == 'water':
+                    water = await client.get_node(f"ns={idx};s=Water").write_value(ua.Variant(True, ua.VariantType.Boolean))
+                elif type == 'food':
+                    food = await client.get_node(f"ns={idx};s=Food").write_value(ua.Variant(True, ua.VariantType.Boolean))
+                elif type == 'light':
+                    light = await client.get_node(f"ns={idx};s=Light").write_value(ua.Variant(True, ua.VariantType.Boolean))
+
+                return (water, food, light)
+            except Exception as e:
+                print("OPC read error:", type(e).__name__, e)
+                return None
+            finally:
+                await client.disconnect()
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            water = asyncio.run(_read())
-            if water is not None:
-                self.tama.opc_update(water, self.tama.vitality, self.tama.mood, self.tama.age)
-                self.tama.status_update()
+            if type == "read":
+                water = asyncio.run(_read())
+                if water is not None:
+                    self.tama.opc_update(water, self.tama.vitality, self.tama.mood, self.tama.age)
+                    self.tama.status_update()
+            elif type == "write":
+                if flag == 'water':
+                    water = asyncio.run(_write("water"))
+                elif flag == 'food':
+                    food = asyncio.run(_write("food"))
+                elif flag == 'light':
+                    light = asyncio.run(_write("light"))
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
         finally:
