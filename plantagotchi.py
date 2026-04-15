@@ -13,9 +13,27 @@ if not sys.platform == 'win32':
     from gpiozero import Button
     os_type = 'raspbi'
     KEYDOWN = pygame.KEYDOWN
-    A_BUTTON = Button(17)
-    B_BUTTON = Button(18)
-    C_BUTTON = Button(23)
+    A_BUTTON = pygame.K_a
+    B_BUTTON = pygame.K_b
+    C_BUTTON = pygame.K_c
+
+    btn_a = Button(17)
+    btn_b = Button(18)
+    btn_c = Button(23)
+
+    def press_a():
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a))
+
+    def press_b():
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_b))
+
+    def press_c():
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_c))
+
+    btn_a.when_pressed = press_a
+    btn_b.when_pressed = press_b
+    btn_c.when_pressed = press_c
+
 # if windows:
 else:
     os_type = 'win32'
