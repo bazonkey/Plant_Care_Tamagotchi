@@ -410,7 +410,7 @@ class App:
 
     def _fetch_opc(self):
         async def _read():
-            client = Client("opc.tcp://100.100.12.80:4840/myopcua/server")
+            client = Client("opc.tcp://100.100.12.80:4840/myopcua/server", timeout=30)
             client.application_uri = "urn:trevor:opcua:client"
             await client.set_security(
                 SecurityPolicyBasic256Sha256,
