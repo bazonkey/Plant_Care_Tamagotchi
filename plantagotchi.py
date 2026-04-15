@@ -12,14 +12,10 @@ LIGHT_MAX = 100
 if not sys.platform == 'win32':
     from gpiozero import Button
     os_type = 'raspbi'
-    _GPIO_A = Button(17)
-    _GPIO_B = Button(18)
-    _GPIO_C = Button(23)
     KEYDOWN = pygame.KEYDOWN
-    A_BUTTON = pygame.K_r
-    B_BUTTON = pygame.K_x
-    C_BUTTON = pygame.K_b
-    _gpio_prev = {'a': False, 'b': False, 'c': False}
+    A_BUTTON = Button(17)
+    B_BUTTON = Button(18)
+    C_BUTTON = Button(23)
 # if windows:
 else:
     os_type = 'win32'
@@ -27,16 +23,6 @@ else:
     A_BUTTON = pygame.K_a # navigate
     B_BUTTON = pygame.K_b # select
     C_BUTTON = pygame.K_c # back
-
-def poll_gpio():
-    """Inject synthetic pygame KEYDOWN events for GPIO button presses (rising edge only)."""
-    if os_type != 'raspbi':
-        return
-    for btn, key, label in [(_GPIO_A, A_BUTTON, 'a'), (_GPIO_B, B_BUTTON, 'b'), (_GPIO_C, C_BUTTON, 'c')]:
-        pressed = btn.is_pressed
-        if pressed and not _gpio_prev[label]:
-            pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=key, mod=0, unicode=''))
-        _gpio_prev[label] = pressed
 
 def load_image(name, colorkey=None, scale=1):
     fullname = os.path.join(img_dir, name)
@@ -453,7 +439,6 @@ class App:
             self.tama.status_update()
 
     def on_loop(self):
-        poll_gpio()
         self.allsprites.update()
         self.menu.update()
         if self.active_care:
