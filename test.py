@@ -1,6 +1,6 @@
 from gpiozero import Button
 
-button = Button(18)
+button = Button(17)
 count = 0
 while count < 100:
     if button.is_pressed:
