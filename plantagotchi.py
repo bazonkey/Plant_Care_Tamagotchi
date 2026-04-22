@@ -529,7 +529,7 @@ class App:
                 if not self.active_care.open:
                     self.active_care = None
 
-                threading.Thread(target=self._fetch_opc, daemon=True, args=("read", "Water", "False")).start()
+                threading.Thread(target=self._fetch_opc, daemon=True, args=("write", "Water", "True")).start()
 
                 print('SUCCESS')
                 self.tama.flash_sprite("tama_joy")
