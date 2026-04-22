@@ -408,7 +408,7 @@ class App:
         self.care_screens = None
         self.active_care = None
 
-    def _fetch_opc(self, type, flag):
+    async def _fetch_opc(self, type, flag):
         async def _read():
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
@@ -451,12 +451,15 @@ class App:
             finally:
                 await client.disconnect()
 
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
         async def _write(type, flag):
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
 
             async with client:
-                type = client.get_node(f"ns=2;s={flag}")
+                node = client.get_node(f"ns=2;s={flag}")
                 await node.write_value(ua.Variant(type, ua.VariantType.Boolean))
                 return True
         try:
@@ -467,18 +470,15 @@ class App:
                     self.tama.status_update()
             elif type == "write":
                 if flag == 'water':
-                    water = asyncio.run(_write("water"))
+                    water = asyncio.run(_write("water", "TRUE"))
                 elif flag == 'food':
-                    food = asyncio.run(_write("food"))
+                    food = asyncio.run(_write("food", "TRUE"))
                 elif flag == 'light':
-                    light = asyncio.run(_write("light"))
+                    light = asyncio.run(_write("light", "TRUE"))
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
         finally:
             loop.close()
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
 
     def on_init(self):
         pygame.init()
@@ -529,7 +529,8 @@ class App:
                 if not self.active_care.open:
                     self.active_care = None
 
-                self._fetch_opc._write("water", "TRUE")
+                threading.Thread(target=self._fetch_opc, daemon=True).start()
+
                 print('SUCCESS')
                 self.tama.flash_sprite("tama_joy")
             elif event.key == A_BUTTON:
