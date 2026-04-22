@@ -548,9 +548,11 @@ class App:
                 if not self.active_care.open:
                     self.active_care = None
 
+                # JUST TEST: make specific to care screen
+                asyncio.run(self.write_opc_data("Water", "True"))
+                asyncio.run(self.write_opc_data("Light", "True"))
+                asyncio.run(self.write_opc_data("Food", "True"))
 
-
-                print('SUCCESS')
                 self.tama.flash_sprite("tama_joy")
             elif event.key == A_BUTTON:
                 self.menu.toggle()
@@ -567,6 +569,9 @@ class App:
 
         if event.type == self.OPC_UPDATE:
             self.tama.thirst = asyncio.run(self.get_opc_data("Moisture"))
+            self.tama.vitality = asyncio.run(self.get_opc_data("LightIntensity"))
+            # change to function that calculates lowest value
+            self.tama.mood = asyncio.run(self.get_opc_data("Nitrogen"))
 
             self.tama.status_update()
 
