@@ -450,7 +450,7 @@ class App:
                 return None
             finally:
                 await client.disconnect()
-        async def _write(type):
+        async def _write(type, flag):
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
             await client.set_security(
