@@ -22,7 +22,7 @@ CLIENT_KEY = "pki/own/private/client_key.pem"
 # GLOBALS
 img_dir = os.path.join(os.path.dirname(__file__), "Resources", "images")
 WATER_MAX = 100
-NUTR_MAX = 100
+FOOD_MAX = 100
 LIGHT_MAX = 100
 
 # check for raspbi OS
@@ -124,7 +124,7 @@ class Tama(pygame.sprite.Sprite):
     # ---------------------------
     def opc_update(self, water, nutrients, light, age):
         self.thirst = max(0, water / WATER_MAX * 100)
-        self.vitality = max(0, nutrients / NUTR_MAX * 100)
+        self.vitality = max(0, nutrients / FOOD_MAX * 100)
         self.mood = max(0, light / LIGHT_MAX * 100)
         self.age = int(age)
 
@@ -330,7 +330,7 @@ class WaterScreen(CareScreen):
     def handle_key(self, key, tama):
         super().handle_key(key, tama)
         if key == C_BUTTON:
-            asyncio.run(_write())
+            pass
 
 class GardenScreen(CareScreen):
     def __init__(self, sw, sh):
@@ -520,6 +520,12 @@ class App:
         self.OPC_UPDATE = pygame.USEREVENT + 1
         pygame.time.set_timer(self.OPC_UPDATE, 1000)
 
+
+        # set OPC variables
+        water = WATER_MAX
+        light = LIGHT_MAX
+        food = FOOD_MAX
+
         # Game objects
         self.tama = Tama(self.width, self.height)
         self.allsprites = pygame.sprite.RenderPlain(self.tama)
@@ -540,6 +546,8 @@ class App:
                 self.active_care.handle_key(event.key, self.tama)
                 if not self.active_care.open:
                     self.active_care = None
+
+                print("care just happened")
                 self.tama.flash_sprite("tama_joy")
             elif event.key == A_BUTTON:
                 self.menu.toggle()
