@@ -469,11 +469,11 @@ class App:
                     self.tama.opc_update(water, self.tama.vitality, self.tama.mood, self.tama.age)
                     self.tama.status_update()
             elif type == "write":
-                if flag == 'water':
+                if item == 'water':
                     water = asyncio.run(_write("water", "TRUE"))
-                elif flag == 'food':
+                elif item == 'food':
                     food = asyncio.run(_write("food", "TRUE"))
-                elif flag == 'light':
+                elif item == 'light':
                     light = asyncio.run(_write("light", "TRUE"))
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
