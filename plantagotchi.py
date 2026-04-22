@@ -547,7 +547,8 @@ class App:
                 if not self.active_care.open:
                     self.active_care = None
 
-                print("care just happened")
+                asyncio.run(_write("water", "TRUE"))
+                print('SUCCESS')
                 self.tama.flash_sprite("tama_joy")
             elif event.key == A_BUTTON:
                 self.menu.toggle()
