@@ -454,13 +454,13 @@ class App:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        async def _write():
+        async def _write(item, value):
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
 
             async with client:
-                node = client.get_node(f"ns={idx};s={item}")
-                await node.write_value(ua.Variant(flag, ua.VariantType.Boolean))
+                node = client.get_node(f"ns=2;s={item}")
+                await node.write_value(ua.Variant(value, ua.VariantType.Boolean))
                 return True
         try:
             if type == "read":
@@ -470,11 +470,11 @@ class App:
                     self.tama.status_update()
             elif type == "write":
                 if item == 'water':
-                    water = asyncio.run(_write("water", "TRUE"))
+                    water = asyncio.run(_write("water", value))
                 elif item == 'food':
-                    food = asyncio.run(_write("food", "TRUE"))
+                    food = asyncio.run(_write("food", value))
                 elif item == 'light':
-                    light = asyncio.run(_write("light", "TRUE"))
+                    light = asyncio.run(_write("light", value))
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
         finally:
