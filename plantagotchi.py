@@ -568,10 +568,11 @@ class App:
                     self.menu.toggle()
 
         if event.type == self.OPC_UPDATE:
-            self.tama.thirst = asyncio.run(self.get_opc_data("Moisture"))
-            self.tama.vitality = asyncio.run(self.get_opc_data("LightIntensity"))
+            threading.Thread(target=self.get_opc_data, daemon=True, args= ("Moisture",)).start()
+            # self.tama.thirst = asyncio.run(self.get_opc_data("Moisture"))
+            # self.tama.vitality = asyncio.run(self.get_opc_data("LightIntensity"))
             # change to function that calculates lowest value
-            self.tama.mood = asyncio.run(self.get_opc_data("Nitrogen"))
+            # self.tama.mood = asyncio.run(self.get_opc_data("Nitrogen"))
 
             self.tama.status_update()
 
