@@ -408,7 +408,7 @@ class App:
         self.care_screens = None
         self.active_care = None
 
-    async def _fetch_opc(self, type, flag):
+    async def _fetch_opc(self, type, item, value):
         async def _read():
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
@@ -454,13 +454,13 @@ class App:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        async def _write(type, flag):
+        async def _write():
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
 
             async with client:
-                node = client.get_node(f"ns=2;s={flag}")
-                await node.write_value(ua.Variant(type, ua.VariantType.Boolean))
+                node = client.get_node(f"ns={idx};s={item}")
+                await node.write_value(ua.Variant(flag, ua.VariantType.Boolean))
                 return True
         try:
             if type == "read":
@@ -529,7 +529,7 @@ class App:
                 if not self.active_care.open:
                     self.active_care = None
 
-                threading.Thread(target=self._fetch_opc, daemon=True).start()
+                threading.Thread(target=self._fetch_opc, daemon=True, args=("read", "Water", "False")).start()
 
                 print('SUCCESS')
                 self.tama.flash_sprite("tama_joy")
@@ -547,7 +547,7 @@ class App:
                     self.menu.toggle()
 
         if event.type == self.OPC_UPDATE:
-            threading.Thread(target=self._fetch_opc, daemon=True).start()
+            threading.Thread(target=self._fetch_opc, daemon=True, args=("write", "Water", "True")).start()
 
             self.tama.status_update()
 
