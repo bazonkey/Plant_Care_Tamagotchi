@@ -408,6 +408,7 @@ class App:
         self.care_screens = None
         self.active_care = None
 
+    '''
     async def _fetch_opc(self, type, item, value):
         async def _read():
             client = Client(SERVER_URL)
@@ -462,6 +463,9 @@ class App:
                 node = client.get_node(f"ns=2;s={item}")
                 await node.write_value(ua.Variant(value, ua.VariantType.Boolean))
                 return True
+
+            await client.disconnect()
+
         try:
             if type == "read":
                 water = asyncio.run(_read())
@@ -470,15 +474,30 @@ class App:
                     self.tama.status_update()
             elif type == "write":
                 if item == 'water':
-                    water = asyncio.run(_write("water", value))
+                    water = asyncio.run(_write("Water", value))
                 elif item == 'food':
-                    food = asyncio.run(_write("food", value))
+                    food = asyncio.run(_write("Food", value))
                 elif item == 'light':
-                    light = asyncio.run(_write("light", value))
+                    light = asyncio.run(_write("Light", value))
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
         finally:
             loop.close()
+    '''
+
+    async def get_opc_data(self, node):
+        client=Client(url=SERVER_URL)
+        async with client:
+            node = client.get_node(f"ns=2;s={node}")
+            value = await node.read_value()
+            return value
+
+    async def write_opc_data(self, data, node):
+        client = Client(url=SERVER_URL)
+        async with client:
+            node = client.get_node(f"ns=2;s={node}")
+            await node.write_value(ua.Variant(data, ua.VariantType.Boolean))
+            return True
 
     def on_init(self):
         pygame.init()
@@ -529,7 +548,7 @@ class App:
                 if not self.active_care.open:
                     self.active_care = None
 
-                threading.Thread(target=self._fetch_opc, daemon=True, args=("write", "Water", "True")).start()
+
 
                 print('SUCCESS')
                 self.tama.flash_sprite("tama_joy")
@@ -547,7 +566,7 @@ class App:
                     self.menu.toggle()
 
         if event.type == self.OPC_UPDATE:
-            threading.Thread(target=self._fetch_opc, daemon=True, args=("write", "Water", "True")).start()
+            self.tama.thirst = asyncio.run(self.get_opc_data("Moisture"))
 
             self.tama.status_update()
 
