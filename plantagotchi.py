@@ -450,36 +450,15 @@ class App:
                 return None
             finally:
                 await client.disconnect()
-        async def _pencil(type, flag):
+
+        async def _write(type, flag):
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
-            await client.set_security(
-                SecurityPolicyBasic256Sha256,
-                certificate="pki/own/certs/client_cert.der",
-                private_key="pki/own/private/client_key.pem",
-            )
-            try:
-                await client.connect()
-                uri = "http://myopcua.server"
-                idx = await client.get_namespace_index(uri)
-                # change to write and pass variant .write_value(ua.Variant(value, ua.VariantType.[variant type: bool, float, etc]))
-                # deliverables
-                if type == 'water':
-                    water = await client.get_node(f"ns={idx};s=Water").write_value(ua.Variant(True, ua.VariantType.Boolean))
-                elif type == 'food':
-                    food = await client.get_node(f"ns={idx};s=Food").write_value(ua.Variant(True, ua.VariantType.Boolean))
-                elif type == 'light':
-                    light = await client.get_node(f"ns={idx};s=Light").write_value(ua.Variant(True, ua.VariantType.Boolean))
 
-                return (water, food, light)
-            except Exception as e:
-                print("OPC read error:", type(e).__name__, e)
-                return None
-            finally:
-                await client.disconnect()
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+            async with client:
+                type = client.get_node(f"ns=2;s={flag}")
+                await node.write_value(ua.Variant(type, ua.VariantType.Boolean))
+                return True
         try:
             if type == "read":
                 water = asyncio.run(_read())
@@ -488,15 +467,18 @@ class App:
                     self.tama.status_update()
             elif type == "write":
                 if flag == 'water':
-                    water = asyncio.run(_pencil("water"))
+                    water = asyncio.run(_write("water"))
                 elif flag == 'food':
-                    food = asyncio.run(_pencil("food"))
+                    food = asyncio.run(_write("food"))
                 elif flag == 'light':
-                    light = asyncio.run(_pencil("light"))
+                    light = asyncio.run(_write("light"))
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
         finally:
             loop.close()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     def on_init(self):
         pygame.init()
@@ -547,7 +529,7 @@ class App:
                 if not self.active_care.open:
                     self.active_care = None
 
-                asyncio.run(_pencil("water", "TRUE"))
+                self._fetch_opc._write("water", "TRUE")
                 print('SUCCESS')
                 self.tama.flash_sprite("tama_joy")
             elif event.key == A_BUTTON:
