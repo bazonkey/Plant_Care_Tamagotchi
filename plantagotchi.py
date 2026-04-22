@@ -450,7 +450,7 @@ class App:
                 return None
             finally:
                 await client.disconnect()
-        async def _write(type, flag):
+        async def _pencil(type, flag):
             client = Client(SERVER_URL)
             client.application_uri = "urn:trevor:opcua:client"
             await client.set_security(
@@ -488,11 +488,11 @@ class App:
                     self.tama.status_update()
             elif type == "write":
                 if flag == 'water':
-                    water = asyncio.run(_write("water"))
+                    water = asyncio.run(_pencil("water"))
                 elif flag == 'food':
-                    food = asyncio.run(_write("food"))
+                    food = asyncio.run(_pencil("food"))
                 elif flag == 'light':
-                    light = asyncio.run(_write("light"))
+                    light = asyncio.run(_pencil("light"))
         except Exception as e:
             print("OPC fetch failed:", type(e).__name__, e)
         finally:
@@ -547,7 +547,7 @@ class App:
                 if not self.active_care.open:
                     self.active_care = None
 
-                asyncio.run(_write("water", "TRUE"))
+                asyncio.run(_pencil("water", "TRUE"))
                 print('SUCCESS')
                 self.tama.flash_sprite("tama_joy")
             elif event.key == A_BUTTON:
