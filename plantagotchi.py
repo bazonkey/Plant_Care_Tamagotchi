@@ -329,10 +329,15 @@ class WaterScreen(CareScreen):
         hint = self.font.render("Press C to water", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
-    def handle_key(self, key, tama):
+    def handle_key(self, key, tama, app):
         super().handle_key(key, tama)
-        if key == C_BUTTON:
-            pass
+        if key == B_BUTTON:
+            threading.Thread(
+                target=app._run_opc_write,
+                daemon=True,
+                args=("Water", True, ua.VariantType.Boolean)
+            ).start()
+            tama.flash_sprite("tama_joy")
 
 class GardenScreen(CareScreen):
     def __init__(self, sw, sh):
@@ -443,6 +448,29 @@ class App:
         finally:
             loop.close()
 
+    async def write_opc_data(self, node_name, value, variant_type=ua.VariantType.Boolean):
+        try:
+            client = Client(url=SERVER_URL, timeout=10)
+            async with client:
+                node = client.get_node(f"ns=2;s={node_name}")
+                await node.write_value(ua.Variant(value, variant_type))
+                return True
+        except Exception as e:
+            import traceback
+            print(f"OPC write error ({node_name}): {type(e).__name__}: {e}")
+            traceback.print_exc()
+            return False
+
+    def _run_opc_write(self, node_name, value, variant_type=ua.VariantType.Boolean):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self.write_opc_data(node_name, value, variant_type))
+        except Exception as e:
+            print(f"Thread OPC write error: {type(e).__name__}: {e}")
+        finally:
+            loop.close()
+
     def on_init(self):
         pygame.init()
         # SCREEN INIT
@@ -523,7 +551,7 @@ class App:
             if "Light" in v:
                 self.tama.mood = (v["Light"] / LIGHT_MAX) * 100
             if "Nitrogen" in v:
-                self.tama.vitality = max((v["Nitrogen"] / FOOD_MAX) * 100, 1)
+                self.tama.vitality = max((v["Nitrogen"] / FOOD_MAX) * 100, 100)
             self.tama.status_update()
 
     def on_loop(self):
