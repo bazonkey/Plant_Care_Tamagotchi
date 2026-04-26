@@ -447,6 +447,7 @@ class App:
                     except Exception as e:
                         print(f"FAILED node: {name}, NodeId: {node.nodeid}, Error: {e}")
                         results[name] = None
+                return results
         except Exception as e:
             import traceback
             print(f"OPC read error: {type(e).__name__}: {e}")
