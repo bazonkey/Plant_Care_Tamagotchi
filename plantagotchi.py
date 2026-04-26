@@ -335,7 +335,7 @@ class WaterScreen(CareScreen):
             threading.Thread(
                 target=app._run_opc_write,
                 daemon=True,
-                args=("Water", True, ua.VariantType.Boolean)
+                args=("Water", False, ua.VariantType.Boolean)
             ).start()
 
             print("SUCCESS: WATER")
