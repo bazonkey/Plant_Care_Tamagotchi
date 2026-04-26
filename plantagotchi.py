@@ -446,7 +446,7 @@ class App:
                 pygame.event.post(pygame.event.Event(
                     self.OPC_RESULT, {"values": results}
                 ))
-            print("SUCCESS")
+            print(f"SUCCESS: {results}")
         except Exception as e:
             print(f"Thread OPC error: {type(e).__name__}: {e}")
         finally:
@@ -458,6 +458,7 @@ class App:
             async with client:
                 node = client.get_node(f"ns=2;s={node_name}")
                 await node.write_value(ua.Variant(value, variant_type))
+                print(f"SUCCESS: {node_name}, {value}")
                 return True
         except Exception as e:
             import traceback
