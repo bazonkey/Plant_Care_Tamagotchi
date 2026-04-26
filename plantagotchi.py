@@ -1,6 +1,7 @@
 import os, random, sys
 import pygame
 from pygame.locals import *
+import tracemalloc
 
 # ----------------  OPCUA SERVER STUFF ----------------------------
 
@@ -485,19 +486,44 @@ class App:
             loop.close()
     '''
 
-    async def get_opc_data(self, node):
-        client=Client(url=SERVER_URL)
-        async with client:
-            node = client.get_node(f"ns=2;s={node}")
-            value = await node.read_value()
-            return value
+    async def get_opc_data(self, node_name):
+        try:
+            client = Client(url=SERVER_URL)
+            async with client:
+                node = client.get_node(f"ns=2;s={node_name}")
+                value = await node.read_value()
+                return value
+        except Exception as e:
+            import traceback
+            print(f"OPC read error ({node_name}): {type(e).__name__}: {e}")
+            traceback.print_exc()
+            return None
 
+    '''
     async def write_opc_data(self, data, node):
         client = Client(url=SERVER_URL)
         async with client:
             node = client.get_node(f"ns=2;s={node}")
             await node.write_value(ua.Variant(data, ua.VariantType.Boolean))
             return True
+    '''
+
+    def _run_opc_read(self, node_name):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            value = loop.run_until_complete(self.get_opc_data(node_name))
+            if value is not None:
+                pygame.event.post(pygame.event.Event(
+                    pygame.USEREVENT + 2,
+                    {"node": node_name, "value": value}
+                ))
+        except Exception as e:
+            import traceback
+            print(f"Thread-level OPC error: {type(e).__name__}: {e}")
+            traceback.print_exc()
+        finally:
+            loop.close()
 
     def on_init(self):
         pygame.init()
@@ -521,6 +547,7 @@ class App:
         self.OPC_UPDATE = pygame.USEREVENT + 1
         pygame.time.set_timer(self.OPC_UPDATE, 1000)
 
+        self.OPC_RESULT = pygame.USEREVENT + 2
 
         # set OPC variables
         water = WATER_MAX
@@ -567,13 +594,14 @@ class App:
                     self.active_care.show()
                     self.menu.toggle()
 
+        # In on_event, replace the threading call:
         if event.type == self.OPC_UPDATE:
-            threading.Thread(target=self.get_opc_data, daemon=True, args= ("Moisture",)).start()
-            # self.tama.thirst = asyncio.run(self.get_opc_data("Moisture"))
-            # self.tama.vitality = asyncio.run(self.get_opc_data("LightIntensity"))
-            # change to function that calculates lowest value
-            # self.tama.mood = asyncio.run(self.get_opc_data("Nitrogen"))
+            threading.Thread(target=self._run_opc_read, daemon=True, args=("Moisture",)).start()
+            self.tama.status_update()
 
+        if event.type == self.OPC_RESULT:
+            if event.node == "Moisture":
+                self.tama.thirst = event.value
             self.tama.status_update()
 
     def on_loop(self):
