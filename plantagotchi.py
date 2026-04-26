@@ -487,18 +487,38 @@ class App:
             loop.close()
     '''
 
-    async def get_opc_data(self, node_name):
+    async def get_opc_data_all(self):
         try:
-            client = Client(url=SERVER_URL)
+            client = Client(url=SERVER_URL, timeout=10)
             async with client:
-                node = client.get_node(f"ns=2;s={node_name}")
-                value = await node.read_value()
-                return value
+                nodes = {
+                    "Moisture": client.get_node("ns=2;s=Moisture"),
+                    "Light": client.get_node("ns=2;s=LightIntensity"),
+                    "Nitrogen": client.get_node("ns=2;s=Nitrogen"),
+                }
+                results = {}
+                for name, node in nodes.items():
+                    results[name] = await node.read_value()
+                return results
         except Exception as e:
             import traceback
-            print(f"OPC read error ({node_name}): {type(e).__name__}: {e}")
+            print(f"OPC read error: {type(e).__name__}: {e}")
             traceback.print_exc()
             return None
+
+    def _run_opc_read_all(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            results = loop.run_until_complete(self.get_opc_data_all())
+            if results is not None:
+                pygame.event.post(pygame.event.Event(
+                    self.OPC_RESULT, {"values": results}
+                ))
+        except Exception as e:
+            print(f"Thread OPC error: {type(e).__name__}: {e}")
+        finally:
+            loop.close()
 
     '''
     async def write_opc_data(self, data, node):
@@ -597,17 +617,16 @@ class App:
 
         # In on_event, replace the threading call:
         if event.type == self.OPC_UPDATE:
-            threading.Thread(target=self._run_opc_read, daemon=True, args=("Moisture", "Light", "Food")).start()
-            self.tama.status_update()
+            threading.Thread(target=self._run_opc_read_all, daemon=True).start()
 
         if event.type == self.OPC_RESULT:
-            if event.node == "Moisture":
-                self.tama.thirst = ((2000 - event.value) / WATER_MAX) * 100
-            if event.node == "Light":
-                self.mood = (light / LIGHT_MAX) * 100
-                # self.age = int(age)
-            if event.node == "Food":
-                self.vitality = (event.value / FOOD_MAX) * 100
+            v = event.values
+            if "Moisture" in v:
+                self.tama.thirst = ((2000 - v["Moisture"]) / WATER_MAX) * 100
+            if "Light" in v:
+                self.tama.mood = (v["Light"] / LIGHT_MAX) * 100
+            if "Nitrogen" in v:
+                self.tama.vitality = (v["Nitrogen"] / FOOD_MAX) * 100
             self.tama.status_update()
 
     def on_loop(self):
