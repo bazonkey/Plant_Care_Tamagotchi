@@ -124,7 +124,7 @@ class Tama(pygame.sprite.Sprite):
     # OPCUA DATA
     # ---------------------------
     def opc_update(self, water, nutrients, light, age):
-        self.thirst = ((2000+water) / WATER_MAX) * 100
+        self.thirst = ((2000-water) / WATER_MAX) * 100
         self.vitality = max(0, nutrients / FOOD_MAX * 100)
         self.mood = max(0, light / LIGHT_MAX * 100)
         self.age = int(age)
