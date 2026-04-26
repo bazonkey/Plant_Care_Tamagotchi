@@ -371,7 +371,11 @@ class GardenScreen(CareScreen):
     def handle_key(self, key, tama):
         super().handle_key(key, tama)
         if key == C_BUTTON:
-            tama.vitality = min(100, tama.vitality + 20)
+            threading.Thread(
+                target=app._run_opc_write,
+                daemon=True,
+                args=("Food", True, ua.VariantType.Boolean)
+            ).start()
 
 class JournalScreen(CareScreen):
     def __init__(self, sw, sh):
@@ -404,6 +408,11 @@ class JournalScreen(CareScreen):
         if key == C_BUTTON:
             from datetime import date
             self.entries.append(f"Day log: W{int(tama.thirst)} V{int(tama.vitality)} M{int(tama.mood)}")
+            threading.Thread(
+                target=app._run_opc_write,
+                daemon=True,
+                args=("Light", True, ua.VariantType.Boolean)
+            ).start()
 
 class App:
     def __init__(self):
@@ -424,8 +433,12 @@ class App:
             async with client:
                 nodes = {
                     "Moisture": client.get_node("ns=2;s=Moisture"),
-                    "Light": client.get_node("ns=2;s=LightIntensity"),
+                    "Light_Intensity": client.get_node("ns=2;s=LightIntensity"),
                     "Nitrogen": client.get_node("ns=2;s=Nitrogen"),
+                    "Phosphorous": client.get_node("ns=2;s=Phosphorous"),
+                    "Potassium": client.get_node("ns=2;s=Potassium"),
+                    "New_Plant": client.get_node("ns=2;s=New_Plant"),
+                    "Plant_Name": client.get_node("ns=2;s=Plant_Name")
                 }
                 results = {}
                 for name, node in nodes.items():
