@@ -601,7 +601,7 @@ class App:
 
         if event.type == self.OPC_RESULT:
             if event.node == "Moisture":
-                self.thirst = ((2000-event.value) / WATER_MAX) * 100
+                self.tama.thirst = ((2000-water) / WATER_MAX) * 100
             self.tama.status_update()
 
     def on_loop(self):
