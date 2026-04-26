@@ -124,10 +124,11 @@ class Tama(pygame.sprite.Sprite):
     # OPCUA DATA
     # ---------------------------
     def opc_update(self, water, nutrients, light, age):
-        self.thirst = ((2000-water) / WATER_MAX) * 100
-        self.vitality = max(0, nutrients / FOOD_MAX * 100)
-        self.mood = max(0, light / LIGHT_MAX * 100)
-        self.age = int(age)
+        pass
+        # self.thirst = ((2000-water) / WATER_MAX) * 100
+        # self.vitality = max(0, nutrients / FOOD_MAX * 100)
+        # self.mood = max(0, light / LIGHT_MAX * 100)
+        # self.age = int(age)
 
     # ---------------------------
     #  CHANGE STATE
@@ -596,12 +597,17 @@ class App:
 
         # In on_event, replace the threading call:
         if event.type == self.OPC_UPDATE:
-            threading.Thread(target=self._run_opc_read, daemon=True, args=("Moisture",)).start()
+            threading.Thread(target=self._run_opc_read, daemon=True, args=("Moisture", "Light", "Food")).start()
             self.tama.status_update()
 
         if event.type == self.OPC_RESULT:
             if event.node == "Moisture":
                 self.tama.thirst = ((2000 - event.value) / WATER_MAX) * 100
+            if event.node == "Light":
+                self.mood = (light / LIGHT_MAX) * 100
+                # self.age = int(age)
+            if event.node == "Food":
+                self.vitality = (event.value / FOOD_MAX) * 100
             self.tama.status_update()
 
     def on_loop(self):
