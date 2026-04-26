@@ -329,13 +329,13 @@ class WaterScreen(CareScreen):
         hint = self.font.render("Press C to water", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
-    def handle_key(self, key, tama, app=None):
+    def handle_key(self, key, tama):
         super().handle_key(key, tama)
         if key == C_BUTTON:
             threading.Thread(
                 target=app._run_opc_write,
                 daemon=True,
-                args=("Water", False, ua.VariantType.Boolean)
+                args=("Water", True, ua.VariantType.Boolean)
             ).start()
 
             print("SUCCESS: WATER")
@@ -541,7 +541,7 @@ class App:
 
             # care screen is open — send keys to it only
             elif self.active_care and self.active_care.open:
-                self.active_care.handle_key(event.key, self.tama, self)  # pass app
+                self.active_care.handle_key(event.key, self.tama)
                 if not self.active_care.open:
                     self.active_care = None
 
