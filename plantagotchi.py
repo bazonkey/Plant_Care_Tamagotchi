@@ -433,7 +433,7 @@ class App:
             async with client:
                 nodes = {
                     "Moisture": client.get_node("ns=2;s=Moisture"),
-                    "Light_Intensity": client.get_node("ns=2;s=LightIntensity"),
+                    "LightIntensity": client.get_node("ns=2;s=LightIntensity"),
                     "Nitrogen": client.get_node("ns=2;s=Nitrogen"),
                     "Phosphorus": client.get_node("ns=2;s=Phosphorus"),
                     "Potassium": client.get_node("ns=2;s=Potassium"),
@@ -442,8 +442,11 @@ class App:
                 }
                 results = {}
                 for name, node in nodes.items():
-                    results[name] = await node.read_value()
-                return results
+                    try:
+                        results[name] = await node.read_value()
+                    except Exception as e:
+                        print(f"FAILED node: {name}, NodeId: {node.nodeid}, Error: {e}")
+                        results[name] = None
         except Exception as e:
             import traceback
             print(f"OPC read error: {type(e).__name__}: {e}")
