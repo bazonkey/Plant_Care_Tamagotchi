@@ -124,7 +124,7 @@ class Tama(pygame.sprite.Sprite):
     # OPCUA DATA
     # ---------------------------
     def opc_update(self, water, nutrients, light, age):
-
+        self.thirst = ((2000-water) / WATER_MAX) * 100
         self.vitality = max(0, nutrients / FOOD_MAX * 100)
         self.mood = max(0, light / LIGHT_MAX * 100)
         self.age = int(age)
@@ -601,7 +601,7 @@ class App:
 
         if event.type == self.OPC_RESULT:
             if event.node == "Moisture":
-                self.tama.thirst = ((2000-water) / WATER_MAX) * 100
+                self.tama.thirst = ((2000 - event.value) / WATER_MAX) * 100
             self.tama.status_update()
 
     def on_loop(self):
