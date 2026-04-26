@@ -23,7 +23,7 @@ CLIENT_KEY = "pki/own/private/client_key.pem"
 # GLOBALS
 img_dir = os.path.join(os.path.dirname(__file__), "Resources", "images")
 WATER_MAX = 4095
-FOOD_MAX = 100
+FOOD_MAX = 65000
 LIGHT_MAX = 100
 
 # check for raspbi OS
@@ -410,83 +410,6 @@ class App:
         self.care_screens = None
         self.active_care = None
 
-    '''
-    async def _fetch_opc(self, type, item, value):
-        async def _read():
-            client = Client(SERVER_URL)
-            client.application_uri = "urn:trevor:opcua:client"
-            await client.set_security(
-                SecurityPolicyBasic256Sha256,
-                certificate="pki/own/certs/client_cert.der",
-                private_key="pki/own/private/client_key.pem",
-            )
-            try:
-                await client.connect()
-                uri = "http://myopcua.server"
-                idx = await client.get_namespace_index(uri)
-                # change to write and pass variant .write_value(ua.Variant(value, ua.VariantType.[variant type: bool, float, etc]))
-                # deliverables
-                water = await client.get_node(f"ns={idx};s=Water").read_value()
-                food = await client.get_node(f"ns={idx};s=Food").read_value()
-                light = await client.get_node(f"ns={idx};s=Light").read_value()
-
-                # values
-                light_intensity = await client.get_node(f"ns={idx};s=LightIntensity").read_value()
-                moisture = await client.get_node(f"ns={idx};s=Moisture").read_value()
-                nitrogen = await client.get_node(f"ns={idx};s=Nitrogen").read_value()
-                phosphorus = await client.get_node(f"ns={idx};s=Phosphorus").read_value()
-                potassium = await client.get_node(f"ns={idx};s=Potassium").read_value()
-
-
-                print("water:", water)
-                print("food:", food)
-                print("light:", light)
-                print("light_intensity:", light_intensity)
-                print("moisture:", moisture)
-                print("nitrogen:", nitrogen)
-                print("phosphorus:", phosphorus)
-                print("potassium:", potassium)
-
-                return (water, food, light, light_intensity, moisture, nitrogen, phosphorus, potassium)
-            except Exception as e:
-                print("OPC read error:", type(e).__name__, e)
-                return None
-            finally:
-                await client.disconnect()
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        async def _write(item, value):
-            client = Client(SERVER_URL)
-            client.application_uri = "urn:trevor:opcua:client"
-
-            async with client:
-                node = client.get_node(f"ns=2;s={item}")
-                await node.write_value(ua.Variant(value, ua.VariantType.Boolean))
-                return True
-
-            await client.disconnect()
-
-        try:
-            if type == "read":
-                water = asyncio.run(_read())
-                if water is not None:
-                    self.tama.opc_update(water, self.tama.vitality, self.tama.mood, self.tama.age)
-                    self.tama.status_update()
-            elif type == "write":
-                if item == 'water':
-                    water = asyncio.run(_write("Water", value))
-                elif item == 'food':
-                    food = asyncio.run(_write("Food", value))
-                elif item == 'light':
-                    light = asyncio.run(_write("Light", value))
-        except Exception as e:
-            print("OPC fetch failed:", type(e).__name__, e)
-        finally:
-            loop.close()
-    '''
-
     async def get_opc_data_all(self):
         try:
             client = Client(url=SERVER_URL, timeout=10)
@@ -517,32 +440,6 @@ class App:
                 ))
         except Exception as e:
             print(f"Thread OPC error: {type(e).__name__}: {e}")
-        finally:
-            loop.close()
-
-    '''
-    async def write_opc_data(self, data, node):
-        client = Client(url=SERVER_URL)
-        async with client:
-            node = client.get_node(f"ns=2;s={node}")
-            await node.write_value(ua.Variant(data, ua.VariantType.Boolean))
-            return True
-    '''
-
-    def _run_opc_read(self, node_name):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            value = loop.run_until_complete(self.get_opc_data(node_name))
-            if value is not None:
-                pygame.event.post(pygame.event.Event(
-                    pygame.USEREVENT + 2,
-                    {"node": node_name, "value": value}
-                ))
-        except Exception as e:
-            import traceback
-            print(f"Thread-level OPC error: {type(e).__name__}: {e}")
-            traceback.print_exc()
         finally:
             loop.close()
 
@@ -622,11 +519,11 @@ class App:
         if event.type == self.OPC_RESULT:
             v = event.values
             if "Moisture" in v:
-                self.tama.thirst = ((2000 - v["Moisture"]) / WATER_MAX) * 100
+                self.tama.thirst = ((1650 - v["Moisture"]) / WATER_MAX) * 100
             if "Light" in v:
                 self.tama.mood = (v["Light"] / LIGHT_MAX) * 100
             if "Nitrogen" in v:
-                self.tama.vitality = (v["Nitrogen"] / FOOD_MAX) * 100
+                self.tama.vitality = max((v["Nitrogen"] / FOOD_MAX) * 100, 100)
             self.tama.status_update()
 
     def on_loop(self):
