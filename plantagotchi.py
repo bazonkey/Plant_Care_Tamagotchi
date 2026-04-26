@@ -208,7 +208,7 @@ class MenuScreen:
             return None
         items_count = 3
         if key == A_BUTTON:
-            self.hide()
+            self.toggle()
         elif key == B_BUTTON:
             self.selected = (self.selected + 1) % items_count
         elif key == C_BUTTON:
@@ -329,9 +329,9 @@ class WaterScreen(CareScreen):
         hint = self.font.render("Press C to water", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
-    def handle_key(self, key, tama, app):
+    def handle_key(self, key, tama, app=None):
         super().handle_key(key, tama)
-        if key == B_BUTTON:
+        if key == B_BUTTON and app:
             threading.Thread(
                 target=app._run_opc_write,
                 daemon=True,
@@ -516,31 +516,29 @@ class App:
             self._running = False
 
         if event.type == KEYDOWN:
-            if self.active_care and self.active_care.open:
-                self.active_care.handle_key(event.key, self.tama)
+            # ESCAPE always quits
+            if event.key == pygame.K_ESCAPE:
+                self.on_cleanup()
+                sys.exit()
+
+            # care screen is open — send keys to it only
+            elif self.active_care and self.active_care.open:
+                self.active_care.handle_key(event.key, self.tama, self)  # pass app
                 if not self.active_care.open:
                     self.active_care = None
 
-                # JUST TEST: make specific to care screen
-                asyncio.run(self.write_opc_data("Water", "True"))
-                asyncio.run(self.write_opc_data("Light", "True"))
-                asyncio.run(self.write_opc_data("Food", "True"))
-
-                self.tama.flash_sprite("tama_joy")
-            elif event.key == A_BUTTON:
-                self.menu.toggle()
-            # QUIT
-            elif event.key == pygame.K_ESCAPE:
-                self.on_cleanup()
-                sys.exit()
-            else:
+            # menu is open — send keys to it only
+            elif self.menu.open:
                 selected = self.menu.handle_key(event.key)
                 if selected is not None:
                     self.active_care = self.care_screens[selected]
                     self.active_care.show()
                     self.menu.toggle()
 
-        # In on_event, replace the threading call:
+            # nothing open — A opens menu
+            elif event.key == A_BUTTON:
+                self.menu.toggle()
+
         if event.type == self.OPC_UPDATE:
             threading.Thread(target=self._run_opc_read_all, daemon=True).start()
 
@@ -551,7 +549,7 @@ class App:
             if "Light" in v:
                 self.tama.mood = (v["Light"] / LIGHT_MAX) * 100
             if "Nitrogen" in v:
-                self.tama.vitality = max((v["Nitrogen"] / FOOD_MAX) * 100, 100)
+                self.tama.vitality = min((v["Nitrogen"] / FOOD_MAX) * 100, 100)
             self.tama.status_update()
 
     def on_loop(self):
