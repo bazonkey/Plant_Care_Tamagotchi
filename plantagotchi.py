@@ -282,7 +282,7 @@ class CareScreen:
         self.open = False
         self.target_x = self.width
 
-    def handle_key(self, key, tama):
+    def handle_key(self, key, tama, app=None):
         if key == C_BUTTON:
             self.hide()
 
@@ -329,7 +329,7 @@ class WaterScreen(CareScreen):
         hint = self.font.render("Press C to water", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
-    def handle_key(self, key, tama):
+    def handle_key(self, key, tama, app=None):
         super().handle_key(key, tama)
         if key == C_BUTTON:
             threading.Thread(
@@ -368,7 +368,7 @@ class GardenScreen(CareScreen):
         hint = self.font.render("Fertilize(y)", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
-    def handle_key(self, key, tama):
+    def handle_key(self, key, tama, app=None):
         super().handle_key(key, tama)
         if key == C_BUTTON:
             threading.Thread(
@@ -403,7 +403,7 @@ class JournalScreen(CareScreen):
         hint = self.font.render("Press Y to log entry", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
-    def handle_key(self, key, tama):
+    def handle_key(self, key, tama, app=None):
         super().handle_key(key, tama)
         if key == C_BUTTON:
             from datetime import date
@@ -541,7 +541,7 @@ class App:
 
             # care screen is open — send keys to it only
             elif self.active_care and self.active_care.open:
-                self.active_care.handle_key(event.key, self.tama)
+                self.active_care.handle_key(event.key, self.tama, self)  # pass app
                 if not self.active_care.open:
                     self.active_care = None
 
