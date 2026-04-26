@@ -435,7 +435,7 @@ class App:
                     "Moisture": client.get_node("ns=2;s=Moisture"),
                     "Light_Intensity": client.get_node("ns=2;s=LightIntensity"),
                     "Nitrogen": client.get_node("ns=2;s=Nitrogen"),
-                    "Phosphorous": client.get_node("ns=2;s=Phosphorous"),
+                    "Phosphorus": client.get_node("ns=2;s=Phosphorus"),
                     "Potassium": client.get_node("ns=2;s=Potassium"),
                     "New_Plant": client.get_node("ns=2;s=New_Plant"),
                     "Plant_Name": client.get_node("ns=2;s=Plant_Name")
@@ -459,7 +459,6 @@ class App:
                 pygame.event.post(pygame.event.Event(
                     self.OPC_RESULT, {"values": results}
                 ))
-            print(f"SUCCESS: {results}")
         except Exception as e:
             print(f"Thread OPC error: {type(e).__name__}: {e}")
         finally:
@@ -563,12 +562,15 @@ class App:
         if event.type == self.OPC_RESULT:
             v = event.values
             if "Moisture" in v:
-                self.tama.thirst = ((1650 - v["Moisture"]) / WATER_MAX) * 100
-            if "Light" in v:
-                self.tama.mood = (v["Light"] / LIGHT_MAX) * 100
+                self.tama.thirst = max(0, min(((1650 - v["Moisture"]) / WATER_MAX) * 100, 100))
+            if "Light_Intensity" in v:  # was "Light"
+                self.tama.mood = min((v["Light_Intensity"] / LIGHT_MAX) * 100, 100)
             if "Nitrogen" in v:
-                self.tama.vitality = min((v["Nitrogen"] / FOOD_MAX) * 100, 100)
+                self.tama.vitality = min(((v["Nitrogen"]+v['Phosphorus']+v['Potassium']) / FOOD_MAX) * 100, 100)
             self.tama.status_update()
+
+            print("OPC result keys:", event.values.keys())
+            print("OPC values:", event.values)
 
     def on_loop(self):
         self.allsprites.update()
