@@ -12,10 +12,10 @@ import threading
 
 SERVER_URL = "opc.tcp://100.90.187.71:4840/myopcua/server"
 # SERVER_URL = "opc.tcp://100.100.12.80:4840/myopcua/server"
-
-CLIENT_CERT = "pki/own/certs/client_cert.der"
-CLIENT_KEY = "pki/own/private/client_key.pem"
-# SERVER_CERT = "pki/trusted/certs/server_cert.der"
+#
+# CLIENT_CERT = "pki/own/certs/client_cert.der"
+# CLIENT_KEY = "pki/own/private/client_key.pem"
+# # SERVER_CERT = "pki/trusted/certs/server_cert.der"
 
 
 # ----------------  END --------------- ----------------------------
@@ -331,12 +331,15 @@ class WaterScreen(CareScreen):
 
     def handle_key(self, key, tama, app=None):
         super().handle_key(key, tama)
-        if key == B_BUTTON and app:
+        if key == C_BUTTON:
             threading.Thread(
                 target=app._run_opc_write,
                 daemon=True,
                 args=("Water", True, ua.VariantType.Boolean)
             ).start()
+
+            print("SUCCESS: WATER")
+
             tama.flash_sprite("tama_joy")
 
 class GardenScreen(CareScreen):
