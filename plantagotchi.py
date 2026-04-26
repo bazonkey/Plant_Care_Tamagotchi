@@ -523,7 +523,7 @@ class App:
             if "Light" in v:
                 self.tama.mood = (v["Light"] / LIGHT_MAX) * 100
             if "Nitrogen" in v:
-                self.tama.vitality = max((v["Nitrogen"] / FOOD_MAX) * 100, 100)
+                self.tama.vitality = max((v["Nitrogen"] / FOOD_MAX) * 100, 1)
             self.tama.status_update()
 
     def on_loop(self):
