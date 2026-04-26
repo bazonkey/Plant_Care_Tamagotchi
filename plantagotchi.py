@@ -443,6 +443,7 @@ class App:
                 pygame.event.post(pygame.event.Event(
                     self.OPC_RESULT, {"values": results}
                 ))
+            print("SUCCESS")
         except Exception as e:
             print(f"Thread OPC error: {type(e).__name__}: {e}")
         finally:
