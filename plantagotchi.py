@@ -22,7 +22,7 @@ CLIENT_KEY = "pki/own/private/client_key.pem"
 
 # GLOBALS
 img_dir = os.path.join(os.path.dirname(__file__), "Resources", "images")
-WATER_MAX = 100
+WATER_MAX = 4095
 FOOD_MAX = 100
 LIGHT_MAX = 100
 
@@ -124,7 +124,7 @@ class Tama(pygame.sprite.Sprite):
     # OPCUA DATA
     # ---------------------------
     def opc_update(self, water, nutrients, light, age):
-        self.thirst = max(0, water / WATER_MAX * 100)
+        self.thirst = max(0, (2000+water) / WATER_MAX * 100)
         self.vitality = max(0, nutrients / FOOD_MAX * 100)
         self.mood = max(0, light / LIGHT_MAX * 100)
         self.age = int(age)
