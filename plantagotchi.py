@@ -512,7 +512,7 @@ class App:
 
         # OPC timer
         self.OPC_UPDATE = pygame.USEREVENT + 1
-        pygame.time.set_timer(self.OPC_UPDATE, 1000)
+        pygame.time.set_timer(self.OPC_UPDATE, 5000)
 
         self.OPC_RESULT = pygame.USEREVENT + 2
 
@@ -567,8 +567,8 @@ class App:
             v = event.values
             if "Moisture" in v:
                 self.tama.thirst = max(0, min(((1650 - v["Moisture"]) / WATER_MAX) * 100, 100))
-            if "Light_Intensity" in v:
-                self.tama.mood = min((v["Light_Intensity"] / LIGHT_MAX) * 100, 100)
+            if "LightIntensity" in v:
+                self.tama.mood = min((v["LightIntensity"] / LIGHT_MAX) * 100, 100)
             if "Nitrogen" in v:
                 self.tama.vitality = min(((v["Nitrogen"]+v['Phosphorus']+v['Potassium']) / FOOD_MAX) * 100, 100)
             self.tama.status_update()
@@ -576,7 +576,7 @@ class App:
                 if v['New_Plant']:
                     self.tama.plant_type = v['Plant_Name']
                     threading.Thread(
-                        target=app._run_opc_write,
+                        target=self._run_opc_write,
                         daemon=True,
                         args=("New_Plant", False, ua.VariantType.Boolean)
                     ).start()
