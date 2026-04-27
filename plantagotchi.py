@@ -567,12 +567,19 @@ class App:
             v = event.values
             if "Moisture" in v:
                 self.tama.thirst = max(0, min(((1650 - v["Moisture"]) / WATER_MAX) * 100, 100))
-            if "Light_Intensity" in v:  # was "Light"
+            if "Light_Intensity" in v:
                 self.tama.mood = min((v["Light_Intensity"] / LIGHT_MAX) * 100, 100)
             if "Nitrogen" in v:
                 self.tama.vitality = min(((v["Nitrogen"]+v['Phosphorus']+v['Potassium']) / FOOD_MAX) * 100, 100)
             self.tama.status_update()
-
+            if "New_Plant" in v:
+                if v['New_Plant']:
+                    self.tama.plant_type = v['Plant_Name']
+                    threading.Thread(
+                        target=app._run_opc_write,
+                        daemon=True,
+                        args=("New_Plant", False, ua.VariantType.Boolean)
+                    ).start()
             print("OPC result keys:", event.values.keys())
             print("OPC values:", event.values)
 
