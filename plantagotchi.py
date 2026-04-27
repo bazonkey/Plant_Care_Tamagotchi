@@ -563,7 +563,7 @@ class App:
         if event.type == self.OPC_UPDATE:
             threading.Thread(target=self._run_opc_read_all, daemon=True).start()
 
-        # self
+        # self ya
         if event.type == self.OPC_RESULT:
             v = event.values
             if "Moisture" in v:
