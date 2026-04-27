@@ -22,7 +22,7 @@ SERVER_URL = "opc.tcp://100.90.187.71:4840/myopcua/server"
 
 # GLOBALS
 img_dir = os.path.join(os.path.dirname(__file__), "Resources", "images")
-WATER_MAX = 4095
+WATER_MAX = 4095-1650
 FOOD_MAX = 65000
 LIGHT_MAX = 100
 
