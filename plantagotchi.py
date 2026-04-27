@@ -22,7 +22,7 @@ SERVER_URL = "opc.tcp://100.90.187.71:4840/myopcua/server"
 
 # GLOBALS
 img_dir = os.path.join(os.path.dirname(__file__), "Resources", "images")
-WATER_MAX = 4095-1650
+WATER_MAX = 4000
 FOOD_MAX = 65000
 LIGHT_MAX = 100
 
@@ -567,7 +567,7 @@ class App:
         if event.type == self.OPC_RESULT:
             v = event.values
             if "Moisture" in v:
-                self.tama.thirst = max(0, min(((1650 - v["Moisture"]) / WATER_MAX) * 100, 100))
+                self.tama.thirst = v["Moisture"] / WATER_MAX
             if "LightIntensity" in v:
                 self.tama.mood = min((v["LightIntensity"] / LIGHT_MAX) * 100, 100)
             if "Nitrogen" in v:
