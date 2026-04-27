@@ -110,7 +110,7 @@ class Tama(pygame.sprite.Sprite):
         self.age = 0
 
         self.name = "Sprout"
-        self.plant_type = "Fern"
+        self.plant_type = "Undef"
 
         # --- state system ---
         self.state = "normal"          # normal / wilt
