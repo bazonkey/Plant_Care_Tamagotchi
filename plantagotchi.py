@@ -567,7 +567,7 @@ class App:
         if event.type == self.OPC_RESULT:
             v = event.values
             if "Moisture" in v:
-                self.tama.thirst = v["Moisture"] / WATER_MAX
+                self.tama.thirst = (v["Moisture"] / WATER_MAX) * 100
             if "LightIntensity" in v:
                 self.tama.mood = min((v["LightIntensity"] / LIGHT_MAX) * 100, 100)
             if "Nitrogen" in v:
