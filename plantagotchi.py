@@ -571,7 +571,7 @@ class App:
             if "LightIntensity" in v:
                 self.tama.mood = min((v["LightIntensity"] / LIGHT_MAX) * 100, 100)
             if "Nitrogen" in v:
-                self.tama.vitality = min(((v["Nitrogen"]+v['Phosphorus']+v['Potassium']) / FOOD_MAX) * 100, 100)
+                self.tama.vitality = (((v["Nitrogen"]+v['Phosphorus']+v['Potassium'])/3) / FOOD_MAX) * 100
             self.tama.status_update()
             if "New_Plant" in v:
                 if v['New_Plant']:
