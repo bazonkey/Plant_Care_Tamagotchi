@@ -26,6 +26,10 @@ WATER_MAX = 4000
 FOOD_MAX = 65000
 LIGHT_MAX = 100
 
+tama = "tama"
+tama_joy = "tama_joy"
+tama_wilt = "tama_wilt"
+
 # check for raspbi OS
 if not sys.platform == 'win32':
     from gpiozero import Button
@@ -110,7 +114,7 @@ class Tama(pygame.sprite.Sprite):
         self.age = 0
 
         self.name = "Sprout"
-        self.plant_type = "Undef"
+        self.plant_type = "Fern"
 
         # --- state system ---
         self.state = "normal"          # normal / wilt
@@ -118,7 +122,7 @@ class Tama(pygame.sprite.Sprite):
         self.flash_until = 0
 
         self.current_sprite = None
-        self._apply_sprite("tama")
+        self._apply_sprite(tama)
 
     # ---------------------------
     # OPCUA DATA
@@ -160,7 +164,7 @@ class Tama(pygame.sprite.Sprite):
 
         # STATUS 2ND
         if self.state == "wilt":
-            return "tama_wilt"
+            return tama_wilt
 
         return "tama"
 
@@ -340,7 +344,7 @@ class WaterScreen(CareScreen):
 
             print("SUCCESS: WATER")
 
-            tama.flash_sprite("tama_joy")
+            tama.flash_sprite(tama_joy)
 
 class GardenScreen(CareScreen):
     def __init__(self, sw, sh):
@@ -575,6 +579,15 @@ class App:
             self.tama.status_update()
             if "New_Plant" in v:
                 if v['New_Plant']:
+                    if v['Plant_Name'] == 'Fern':
+                        tama = 'tama'
+                        tama_joy = 'tama_joy'
+                        tama_wilt = 'tama_wilt'
+                    elif v['Plant_Name'] == 'Flower':
+                        tama = 'tama2'
+                        tama_joy = 'tama_joy2'
+                        tama_wilt = 'tama_wilt2'
+
                     self.tama.plant_type = v['Plant_Name']
                     threading.Thread(
                         target=self._run_opc_write,
