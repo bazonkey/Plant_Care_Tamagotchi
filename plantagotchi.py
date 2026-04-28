@@ -578,21 +578,15 @@ class App:
                 self.tama.vitality = (((v["Nitrogen"]+v['Phosphorus']+v['Potassium'])/3) / FOOD_MAX) * 100
             self.tama.status_update()
             if "New_Plant" in v:
-                global tama, tama_joy, tama_wilt  # ← declare intent to modify globals
-
-                if v['Plant_Name'] == 'Fern':
-                    tama = 'tama'
-                    tama_joy = 'tama_joy'
-                    tama_wilt = 'tama_wilt'
-                elif v['Plant_Name'] == 'Flower':
-                    tama = 'tama2'
-                    tama_joy = 'tama_joy2'
-                    tama_wilt = 'tama_wilt2'
-
-                    self.tama.plant_type = v['Plant_Name']
-                    self.tama.current_sprite = None  # ← force sprite refresh on next update()
-
-                    threading.Thread(...).start()
+                if v['New_Plant']:
+                    if v['Plant_Name'] == 'Fern':
+                        tama = 'tama'
+                        tama_joy = 'tama_joy'
+                        tama_wilt = 'tama_wilt'
+                    elif v['Plant_Name'] == 'Flower':
+                        tama = 'tama2'
+                        tama_joy = 'tama_joy2'
+                        tama_wilt = 'tama_wilt2'
 
                     self.tama.plant_type = v['Plant_Name']
                     threading.Thread(
