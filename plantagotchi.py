@@ -23,7 +23,7 @@ SERVER_URL = "opc.tcp://100.90.187.71:4840/myopcua/server"
 # GLOBALS
 img_dir = os.path.join(os.path.dirname(__file__), "Resources", "images")
 WATER_MAX = 4000
-FOOD_MAX = 65000
+FOOD_MAX = 50
 LIGHT_MAX = 100
 
 tama = "tama"
@@ -578,15 +578,21 @@ class App:
                 self.tama.vitality = (((v["Nitrogen"]+v['Phosphorus']+v['Potassium'])/3) / FOOD_MAX) * 100
             self.tama.status_update()
             if "New_Plant" in v:
-                if v['New_Plant']:
-                    if v['Plant_Name'] == 'Fern':
-                        tama = 'tama'
-                        tama_joy = 'tama_joy'
-                        tama_wilt = 'tama_wilt'
-                    elif v['Plant_Name'] == 'Flower':
-                        tama = 'tama2'
-                        tama_joy = 'tama_joy2'
-                        tama_wilt = 'tama_wilt2'
+                global tama, tama_joy, tama_wilt  # ← declare intent to modify globals
+
+                if v['Plant_Name'] == 'Fern':
+                    tama = 'tama'
+                    tama_joy = 'tama_joy'
+                    tama_wilt = 'tama_wilt'
+                elif v['Plant_Name'] == 'Flower':
+                    tama = 'tama2'
+                    tama_joy = 'tama_joy2'
+                    tama_wilt = 'tama_wilt2'
+
+                    self.tama.plant_type = v['Plant_Name']
+                    self.tama.current_sprite = None  # ← force sprite refresh on next update()
+
+                    threading.Thread(...).start()
 
                     self.tama.plant_type = v['Plant_Name']
                     threading.Thread(
