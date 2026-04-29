@@ -562,7 +562,7 @@ class App:
             if "Moisture" in v:
                 try:
                     new_val = thirst*forgetting_factor+(v["Moisture"]/WATER_MAX)*(1-forgetting_factor)
-                    self.tama.mood = min(new_val, 100)
+                    self.tama.thirst = min(new_val, 100)
                 except:
                     pass
             if "LightIntensity" in v:
