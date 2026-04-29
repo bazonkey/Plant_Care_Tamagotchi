@@ -564,12 +564,12 @@ class App:
                 self.tama.thirst = new_val
             if "LightIntensity" in v:
                 # PUT DIFF EQ EQUATION HERE
-                new_val = thirst * forgetting_factor + v["LightIntensity"] * (1 - forgetting_factor)
-                self.tama.thirst = new_val
+                new_val = mood * forgetting_factor + v["LightIntensity"] * (1 - forgetting_factor)
+                self.tama.mood = new_val
             if "Nitrogen" and "Phosphorus" and "Potassium" in v:
                 current_val = (v["Nitrogen"]+v['Phosphorus']+v['Potassium'])/3
-                new_val = thirst * forgetting_factor + current_val * (1 - forgetting_factor)
-                self.tama.thirst = new_val
+                new_val = vitality * forgetting_factor + current_val * (1 - forgetting_factor)
+                self.tama.vitality = new_val
             self.tama.status_update()
             if "New_Plant" in v:
                 self.tama.plant_type = v['Plant_Name']
