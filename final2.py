@@ -561,21 +561,21 @@ class App:
 
             if "Moisture" in v:
                 try:
-                    new_val = thirst*forgetting_factor+(v["Moisture"]/WATER_MAX)*(1-forgetting_factor)
+                    new_val = thirst*forgetting_factor+((v["Moisture"]/WATER_MAX)*100)*(1-forgetting_factor)
                     self.tama.thirst = min(new_val, 100)
                 except:
                     pass
             if "LightIntensity" in v:
                 # PUT DIFF EQ EQUATION HERE
                 try:
-                    new_val = mood * forgetting_factor + (v["LightIntensity"]/LIGHT_MAX) * (1 - forgetting_factor)
+                    new_val = mood * forgetting_factor + ((v["LightIntensity"]/LIGHT_MAX)*100) * (1 - forgetting_factor)
                     self.tama.mood = min(new_val, 100)
                 except:
                     pass
             if "Nitrogen" and "Phosphorus" and "Potassium" in v:
                 try:
                     current_val = (v["Nitrogen"]+v['Phosphorus']+v['Potassium'])/3
-                    new_val = vitality * forgetting_factor + (current_val/FOOD_MAX) * (1 - forgetting_factor)
+                    new_val = vitality * forgetting_factor + ((current_val/FOOD_MAX)*100) * (1 - forgetting_factor)
                     self.tama.vitality = min(new_val, 100)
                 except:
                     pass
