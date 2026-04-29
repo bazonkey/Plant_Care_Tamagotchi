@@ -107,10 +107,11 @@ class Tama(pygame.sprite.Sprite):
         self.thirst = 100
         self.vitality = 100
         self.mood = 100
-        self.age = 0
+        self.age = 1
 
         self.name = "Sprout"
         self.plant_type = "Fern"
+        self.variant = ''
 
         # --- state system ---
         self.state = "normal"          # normal / wilt
@@ -119,16 +120,6 @@ class Tama(pygame.sprite.Sprite):
 
         self.current_sprite = None
         self._apply_sprite("tama")
-
-    # ---------------------------
-    # OPCUA DATA
-    # ---------------------------
-    def opc_update(self, water, nutrients, light, age):
-        pass
-        # self.thirst = ((2000-water) / WATER_MAX) * 100
-        # self.vitality = max(0, nutrients / FOOD_MAX * 100)
-        # self.mood = max(0, light / LIGHT_MAX * 100)
-        # self.age = int(age)
 
     # ---------------------------
     #  CHANGE STATE
@@ -150,20 +141,16 @@ class Tama(pygame.sprite.Sprite):
     # ---------------------------
     def resolve_sprite(self):
         now = pygame.time.get_ticks()
-
-        # FLASH 1ST
         if self.flash_state:
             if now < self.flash_until:
-                return self.flash_state
+                return self.flash_state + self.variant
             else:
                 self.flash_state = None
 
-        # STATUS 2ND
         if self.state == "wilt":
-            return "tama_wilt"
+            return "tama_wilt" + self.variant
 
-        return "tama"
-
+        return "tama" + self.variant
     # ---------------------------
     # APPLY SPRITE IMG
     # ---------------------------
@@ -365,7 +352,7 @@ class GardenScreen(CareScreen):
         label = self.font.render(f"Nutrients: {int(tama.vitality)}%", True, (255, 255, 255))
         surface.blit(label, (x, y - int(h * 0.125)))
 
-        hint = self.font.render("Fertilize(y)", True, (150, 150, 150))
+        hint = self.font.render("Fertilize(C)", True, (150, 150, 150))
         surface.blit(hint, ((w - hint.get_width()) // 2, h - hint_pad))
 
     def handle_key(self, key, tama, app=None):
@@ -569,12 +556,18 @@ class App:
             if "Moisture" in v:
                 self.tama.thirst = (v["Moisture"] / WATER_MAX) * 100
             if "LightIntensity" in v:
+                # PUT DIFF EQ EQUATION HERE
                 self.tama.mood = min((v["LightIntensity"] / LIGHT_MAX) * 100, 100)
             if "Nitrogen" and "Phosphorus" and "Potassium" in v:
                 self.tama.vitality = (((v["Nitrogen"]+v['Phosphorus']+v['Potassium'])/3) / FOOD_MAX) * 100
             self.tama.status_update()
             if "New_Plant" in v:
                 self.tama.plant_type = v['Plant_Name']
+                if v['Plant_Name'] == "Flower":
+                    self.tama.variant = "2"
+                else:
+                    self.tama.variant = ""
+
                 threading.Thread(
                     target=self._run_opc_write,
                     daemon=True,
@@ -610,20 +603,19 @@ class App:
         padding    = int(self.height * 0.125)
         margin_x   = int(self.width * 0.0625)
         start_y    = int(self.height * 0.229)
-        icon_dim   = int(self.height * 0.067)
-
-        icon, _ = load_image("sprite.png", None, 1)
-        icon = pygame.transform.scale(icon, (icon_dim, icon_dim))
-
+        icon_dim   = int(self.height * 0.1)
         x = self.screen.get_width() - bar_width - margin_x
 
         needs = [
-            ("Thirst",   self.tama.thirst,   (100, 200, 100)),
-            ("Vitality", self.tama.vitality, (100, 150, 255)),
-            ("Mood",     self.tama.mood,     (255, 200,  80)),
+            ("Thirst", self.tama.thirst, (100, 150, 255), "thirst.png"),
+            ("Vitality", self.tama.vitality, (100, 200, 100), "vitality.png"),
+            ("Mood", self.tama.mood, (255, 200, 80), "mood.png"),
         ]
 
-        for i, (label, value, color) in enumerate(needs):
+        for i, (label, value, color, icon_name) in enumerate(needs):
+            icon, _ = load_image(icon_name, None, 1)
+            icon = pygame.transform.scale(icon, (icon_dim, icon_dim))
+
             y = start_y + i * (bar_height + padding)
             pygame.draw.rect(self.screen, (60, 60, 60), (x, y, bar_width, bar_height))
             pygame.draw.rect(self.screen, color, (x, y, int(bar_width * value / 100), bar_height))
@@ -651,21 +643,24 @@ class App:
     def _draw_below(self):
         font = get_font(0.125, self.height)
         icon_dim = int(self.width * 0.0625)
-        gap      = int(self.width * 0.0625)
+        gap = int(self.width * 0.0625)
         margin_b = int(self.height * 0.042)
 
-        icon, _ = load_image("sprite.png", None, 1)
-        icon = pygame.transform.scale(icon, (icon_dim, icon_dim))
+        items = [
+            (self.tama.name, "name.png"),
+            (self.tama.plant_type, "type.png"),
+        ]
 
-        items = [self.tama.name, self.tama.plant_type]
-        rendered = [font.render(label, True, (0, 0, 0)) for label in items]
+        rendered = [font.render(label, True, (0, 0, 0)) for label, _ in items]
         item_widths = [icon_dim + int(self.width * 0.0125) + t.get_width() for t in rendered]
         total_width = sum(item_widths) + gap
 
         y = self.screen.get_height() - icon_dim - margin_b
         start_x = (self.screen.get_width() - total_width) // 2
 
-        for i, (text, item_width) in enumerate(zip(rendered, item_widths)):
+        for i, ((label, icon_name), text, item_width) in enumerate(zip(items, rendered, item_widths)):
+            icon, _ = load_image(icon_name, None, 1)
+            icon = pygame.transform.scale(icon, (icon_dim, icon_dim))
             x = start_x + sum(item_widths[:i]) + i * gap
             self.screen.blit(icon, (x, y))
             self.screen.blit(text, (x + icon_dim + int(self.width * 0.0125), y))
