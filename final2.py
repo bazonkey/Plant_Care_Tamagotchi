@@ -560,16 +560,25 @@ class App:
             vitality = self.tama.vitality
 
             if "Moisture" in v:
-                new_val = thirst*forgetting_factor+v["Moisture"]*(1-forgetting_factor)
-                self.tama.thirst = min(new_val, 100)
+                try:
+                    new_val = thirst*forgetting_factor+v["Moisture"]*(1-forgetting_factor)
+                    self.tama.thirst = min(new_val, 100)
+                except:
+                    pass
             if "LightIntensity" in v:
                 # PUT DIFF EQ EQUATION HERE
-                new_val = mood * forgetting_factor + v["LightIntensity"] * (1 - forgetting_factor)
-                self.tama.mood = min(new_val, 100)
+                try:
+                    new_val = mood * forgetting_factor + v["LightIntensity"] * (1 - forgetting_factor)
+                    self.tama.mood = min(new_val, 100)
+                except:
+                    pass
             if "Nitrogen" and "Phosphorus" and "Potassium" in v:
-                current_val = (v["Nitrogen"]+v['Phosphorus']+v['Potassium'])/3
-                new_val = vitality * forgetting_factor + current_val * (1 - forgetting_factor)
-                self.tama.vitality = min(new_val, 100)
+                try:
+                    current_val = (v["Nitrogen"]+v['Phosphorus']+v['Potassium'])/3
+                    new_val = vitality * forgetting_factor + current_val * (1 - forgetting_factor)
+                    self.tama.vitality = min(new_val, 100)
+                except:
+                    pass
             self.tama.status_update()
             if "New_Plant" in v:
                 self.tama.plant_type = v['Plant_Name']
